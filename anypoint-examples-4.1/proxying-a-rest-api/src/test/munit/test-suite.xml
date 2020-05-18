@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:munit="http://www.mulesoft.org/schema/mule/munit" xmlns:munit-tools="http://www.mulesoft.org/schema/mule/munit-tools"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+		http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+		http://www.mulesoft.org/schema/mule/munit http://www.mulesoft.org/schema/mule/munit/current/mule-munit.xsd
+		http://www.mulesoft.org/schema/mule/munit-tools  http://www.mulesoft.org/schema/mule/munit-tools/current/mule-munit-tools.xsd">
+	<munit:config name="test-suite.xml" />
+
+	<http:request-config name="HTTP_Request_Test_configuration"
+		doc:name="HTTP Request configuration" doc:id="0dc11f13-58b2-4402-b562-ed2b2eab295a">
+		<http:request-connection host="localhost" port="${http.port}"
+			connectionIdleTimeout="300000" />
+	</http:request-config>
+
+	<munit:test name="test-suite-proxying-a-rest-apiFlowTest" description="Test" doc:id="b5a46abb-3d4f-44c6-b584-be75e3115ce5">
+		<munit:enable-flow-sources>
+			<munit:enable-flow-source value="proxying-a-rest-apiFlow" />
+		</munit:enable-flow-sources>
+		<munit:execution>
+			<http:request method="GET" doc:name="Send authorization request"
+				doc:id="4869dc30-26a5-4338-ae98-4e03eda89d88" config-ref="HTTP_Request_Test_configuration"
+				path="/oauth2/authorize" >
+				<http:query-params ><![CDATA[#[output applicaton/java
+---
+{
+	"response_type" : "code",
+	"client_id" : "${box.id}"
+}]]]></http:query-params>
+			</http:request>
+		</munit:execution>
+		<munit:validation>
+			<munit-tools:assert-that doc:name="Assert response status" doc:id="e399bb68-26ef-428c-9b68-89ca73bf76b1" expression="#[attributes.statusCode]" is="#[MunitTools::equalTo(200)]" />
+			<munit-tools:assert-that doc:name="Assert content type" doc:id="5c3d6cd1-d15a-40e2-9a03-12589ce76d9f" expression="#[attributes.headers['content-type']]" is="#[MunitTools::equalTo('text/html; charset=UTF-8')]" />
+			<munit-tools:assert-that
+				doc:name="Assert that response body isn't empty"
+				doc:id="e2b8c8da-c09b-4489-bfd4-390396086516" expression="#[payload]"
+				is="#[MunitTools::notNullValue()]" message="Response body is empty!"/>
+		</munit:validation>
+	</munit:test>
+</mule>

@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:netsuite="http://www.mulesoft.org/schema/mule/netsuite"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:munit="http://www.mulesoft.org/schema/mule/munit"
+	xmlns:munit-tools="http://www.mulesoft.org/schema/mule/munit-tools" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xsi:schemaLocation="
+		http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+		http://www.mulesoft.org/schema/mule/munit http://www.mulesoft.org/schema/mule/munit/current/mule-munit.xsd
+		http://www.mulesoft.org/schema/mule/munit-tools  http://www.mulesoft.org/schema/mule/munit-tools/current/mule-munit-tools.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/netsuite http://www.mulesoft.org/schema/mule/netsuite/current/mule-netsuite.xsd">
+	<munit:config name="test-suite.xml" />
+	<http:request-config name="HTTP_Request_configuration" doc:name="HTTP Request configuration" doc:id="7d2fba83-6e7c-4802-b130-516cd9867aa8" >
+		<http:request-connection host="0.0.0.0" port="${http.port}" />
+	</http:request-config>
+	<configuration-properties doc:name="Configuration properties" doc:id="3488bd04-d53f-46d0-853a-2063507b8118" file="test.properties" />
+	<munit:test name="testFlowTest" description="Test" doc:id="eef4979d-9f85-468c-8f70-553e9ec9ef07" >
+		<munit:enable-flow-sources>
+			<munit:enable-flow-source value="testFlow" />
+		</munit:enable-flow-sources>
+		<munit:execution >
+            <ee:transform doc:name="Prepare request with test customer" doc:id="e3c7df72-42c1-4b94-9f09-1b530302d53e">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/java
+---
+{
+	lastName: "MrTester",
+	firstName: "John",
+	isPerson: true,
+	companyName : "Mulesoft",
+	externalId : "234325",
+	subsidiary: {
+		"type": "SUBSIDIARY",
+		internalId: p('netsuite.customer.subsidiary.internalId')
+	} as Object {class: "org.mule.module.netsuite.extension.api.RecordRef"}
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+            <netsuite:upsert-record recordType="CUSTOMER" doc:name="Upsert test customer" doc:id="f3c651bf-94bd-4d57-b563-fbb9d2cde717" config-ref="NetSuite_Config" />
+            <set-variable value="#[output application/java --- payload.internalId]" doc:name="Set testCustomerInternalId variable" doc:id="35e60fa7-a7a0-4cef-9400-1bf255dce128" variableName="testCustomerInternalId" mimeType="application/java" />
+            <ee:transform doc:name="Customer search request" doc:id="3e0cfb70-31bc-44a4-a594-0cc65dc4fc52">
+                <ee:message>
+                    <ee:set-payload><![CDATA[%dw 2.0
+output application/java
+---
+{
+	lastName: {
+		operator: "CONTAINS",
+		searchValue: "MrTester"
+	} as Object {
+		class : "org.mule.module.netsuite.extension.api.SearchStringField"
+	}
+} as Object {
+	class : "org.mule.module.netsuite.extension.api.CustomerSearchBasic"
+}]]></ee:set-payload>
+                </ee:message>
+            </ee:transform>
+            <netsuite:search key="CUSTOMER_BASIC" doc:name="Search Customer" doc:id="34428447-349a-4629-8301-48a965ed3ff9" config-ref="NetSuite_Config" pageSize="10" target="customer" />
+		</munit:execution>
+		<munit:validation >
+			<munit-tools:assert-that doc:name="Assert that last name is equal to 'MrTester'" doc:id="504cf3b4-f03a-4249-abb9-1207007bc25d" expression="#[vars.customer[0].lastName]" is="#[MunitTools::equalTo('MrTester')]"/>
+			<flow-ref doc:name="deleteTestCustomer" doc:id="342a8396-3fd4-4b03-b605-0e4ff08e964c" name="deleteTestCustomer"/>
+		</munit:validation>
+	</munit:test>
+	<sub-flow name="deleteTestCustomer" doc:id="e31d1bb5-4235-4ffd-9e05-74217bbe877f" >
+		<ee:transform doc:name="Prepare delete test customer request" doc:id="43df0d6b-3ea8-4f64-af7f-348f699ee79a" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+{
+    internalId: vars.testCustomerInternalId,
+    "type": "CUSTOMER"
+} as Object {
+    class : "org.mule.module.netsuite.extension.api.RecordRef"
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<netsuite:delete-record doc:name="Delete test customer" doc:id="eed55343-bc1a-4721-bb83-721172f90b89" config-ref="NetSuite_Config"/>
+	</sub-flow>
+
+</mule>

@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:db="http://www.mulesoft.org/schema/mule/db"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:munit="http://www.mulesoft.org/schema/mule/munit"
+	xmlns:munit-tools="http://www.mulesoft.org/schema/mule/munit-tools" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xsi:schemaLocation="
+		http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+		http://www.mulesoft.org/schema/mule/munit http://www.mulesoft.org/schema/mule/munit/current/mule-munit.xsd
+		http://www.mulesoft.org/schema/mule/munit-tools  http://www.mulesoft.org/schema/mule/munit-tools/current/mule-munit-tools.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<munit:config name="new-test-suite.xml" />
+	<http:request-config name="HTTP_Request_configuration" doc:name="HTTP Request configuration" doc:id="3cfb1b75-5d2c-48b1-89c7-40bbfbe118c0" >
+		<http:request-connection host="localhost" port="8081" />
+	</http:request-config>	
+	<munit:test name="new-test-suite-querying-a-mysql-databaseFlowTest" description="Test" doc:id="3e03b910-77d8-4bf6-b869-102d2efa5b38" >
+		<munit:enable-flow-sources>
+	        <munit:enable-flow-source value="querying-a-mysql-databaseFlow"/>
+    	</munit:enable-flow-sources>
+		<munit:execution >
+			<db:delete doc:name="Delete" doc:id="1a2cf231-f11c-4a69-b733-9729ca7c9201" config-ref="Database_Config">
+				<db:sql >DELETE FROM employees WHERE no=999999</db:sql>
+			</db:delete>
+			<db:insert doc:name="Insert" doc:id="606b5192-9adb-48e0-b39f-49023e106668" config-ref="Database_Config">
+				<db:sql >INSERT INTO employees (no,dob,first_name,last_name,gender,hire_date) VALUES (999999, '2012-01-01', 'Test firstname', 'Test lastname', 'M', '2018-01-01');</db:sql>
+			</db:insert>
+			<http:request method="GET" doc:name="Request" doc:id="1b79b831-dc6d-453b-bd39-cb1d523fd202" path="/" config-ref="HTTP_Request_configuration">
+				<http:query-params ><![CDATA[#[output applicaton/java
+---
+{
+	"lastname" : "Test lastname"
+}]]]></http:query-params>
+			</http:request>
+		</munit:execution>
+		<munit:validation >
+			<ee:transform doc:name="Transform Message" doc:id="769a8068-895c-418e-91db-00a5ec2cfaa1" >
+				<ee:message >
+					<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+payload[0]]]></ee:set-payload>
+				</ee:message>
+			</ee:transform>
+			<munit-tools:assert-that doc:name="Assert first name" doc:id="7a0059be-e995-4e23-98a7-83a1adc8ac57" expression="#[payload.first_name]" is="#[MunitTools::equalTo('Test firstname')]" message="First name isn't correct!"/>
+			<db:delete doc:name="Delete" doc:id="83ecd3d6-eb34-4567-95e0-c83bcfa5282a" config-ref="Database_Config">
+				<db:sql >DELETE FROM employees WHERE last_name='Test lastname'</db:sql>
+			</db:delete>
+		</munit:validation>
+	</munit:test>
+
+
+</mule>

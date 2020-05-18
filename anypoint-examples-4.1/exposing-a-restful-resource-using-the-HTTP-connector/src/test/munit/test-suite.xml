@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:os="http://www.mulesoft.org/schema/mule/os" xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:munit="http://www.mulesoft.org/schema/mule/munit"
+	xmlns:munit-tools="http://www.mulesoft.org/schema/mule/munit-tools" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xsi:schemaLocation="
+		http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+		http://www.mulesoft.org/schema/mule/munit http://www.mulesoft.org/schema/mule/munit/current/mule-munit.xsd
+		http://www.mulesoft.org/schema/mule/munit-tools  http://www.mulesoft.org/schema/mule/munit-tools/current/mule-munit-tools.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<munit:config name="test-suite.xml" />
+	<http:request-config name="HTTP_Request_configuration" doc:name="HTTP Request configuration" doc:id="3cfb1b75-5d2c-48b1-89c7-40bbfbe118c0" >
+		<http:request-connection host="localhost" port="${http.port}" />
+	</http:request-config>
+	<munit:test name="test-suite-storePersonFlowTest" description="Test" doc:id="67d00ca0-efcb-4f24-9419-74aa259927ae" >
+	    <munit:enable-flow-sources>
+	        <munit:enable-flow-source value="storePersonFlow"/>
+    	</munit:enable-flow-sources>
+		<munit:execution>
+			<http:request method="POST" doc:name="Request" doc:id="b2b587f1-0bc6-4c0b-87a2-fc931e1891e2" config-ref="HTTP_Request_configuration" path="/person">
+				<http:body ><![CDATA[ {
+  	"firstname":"Jerry",
+  	"lastname":"Jameson",
+  	"age": "12",
+  	"address":
+     {
+     	"streetAddress":"Lincoln St.",
+         "city":"San Francisco",
+         "state":"CA",
+         "zipCode":"90401"
+ 	}
+ }]]></http:body>
+				<http:headers ><![CDATA[#[output applicaton/java
+---
+{
+	"Content-Type" : "application/json"
+}]]]></http:headers>
+			</http:request>
+		</munit:execution>
+		<munit:validation >
+			<munit-tools:assert-that doc:name="Assert response status" doc:id="75bb7d0a-abd2-4526-8463-c826bb7507b0" message="Response status is not valid!" expression="#[attributes.statusCode]" is="#[MunitTools::equalTo(200)]"/>
+			<munit-tools:assert-that doc:name="Assert that personId is set" doc:id="edd292fa-8a8c-41e4-817f-a7cda2d91cf1" expression="#[payload.personId]" is="#[MunitTools::notNullValue()]" message="Person ID not set!"/>
+			<os:retrieve doc:name="Retrieve person by ID" doc:id="d22bbe75-4ed8-42be-883d-1f0f0b38f367" key="#[payload.personId]" objectStore="Object_store"/>
+			<munit-tools:assert-that doc:name="Assert lastname" doc:id="d1d2b2cf-c54a-4ea3-96bc-859e92a46d60" expression="#[payload.lastname]" is="#[MunitTools::equalTo('Jameson')]" message="Lastname is not correct!"/>
+			<os:remove doc:name="Clean up" doc:id="8fe19626-26c9-4b21-a4fd-3f9a309d1287" key="#[payload.personId]" objectStore="Object_store"/>
+		</munit:validation>
+	</munit:test>
+	<munit:test name="test-suite-retrievePersonFlowTest" description="Test" doc:id="83b285dd-4487-4786-961b-aecb0eae343a" >
+		<munit:enable-flow-sources>
+	        <munit:enable-flow-source value="retrievePersonFlow"/>
+    	</munit:enable-flow-sources>
+		<munit:execution >
+			<ee:transform doc:name="Prepare test person" doc:id="3b14992a-3250-435c-8e6f-9ee10a2e4b2e" >
+				<ee:message >
+					<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+{
+	personId:  uuid(),
+ 	firstname: 'TestFirstname',
+ 	lastname: 'TestLastname',
+ 	age: 99,
+ 	address:
+    {
+	   	"streetAddress":"Test St.",
+	    "city":"TestCity",
+	    "state":"TS",
+	    "zipCode":"90401"
+	}
+}]]></ee:set-payload>
+				</ee:message>
+			</ee:transform>
+			<os:store doc:name="Store Person" doc:id="c9a79952-a7e6-42a7-9371-90769df92311" key="#[payload.personId]" objectStore="Object_store"/>
+			<http:request method="GET" doc:name="Request" doc:id="b2b587f1-0bc6-4c0b-87a2-fc931e1891e2" config-ref="HTTP_Request_configuration" path="/person/{id}">
+				<http:headers><![CDATA[#[output applicaton/java
+---
+{
+	"Content-Type" : "application/json"
+}]]]></http:headers>
+				<http:uri-params ><![CDATA[#[output applicaton/java
+---
+{
+	"id" : payload.personId
+}]]]></http:uri-params>
+			</http:request>
+		</munit:execution>
+		<munit:validation>
+			<munit-tools:assert-that doc:name="Assert response status" doc:id="75bb7d0a-abd2-4526-8463-c826bb7507b0" message="Response status is not valid!" expression="#[attributes.statusCode]" is="#[MunitTools::equalTo(200)]"/>
+			<munit-tools:assert-that doc:name="Assert that personId is set" doc:id="edd292fa-8a8c-41e4-817f-a7cda2d91cf1" expression="#[payload.personId]" is="#[MunitTools::notNullValue()]" message="Person ID not set!"/>
+			<munit-tools:assert-that doc:name="Assert lastname" doc:id="d1d2b2cf-c54a-4ea3-96bc-859e92a46d60" expression="#[payload.lastname]" is="#[MunitTools::equalTo('TestLastname')]" message="Lastname is not correct!"/>
+			<os:remove doc:name="Clean up" doc:id="8fe19626-26c9-4b21-a4fd-3f9a309d1287" key="#[payload.personId]" objectStore="Object_store"/>
+		</munit:validation>
+	</munit:test>
+	<munit:test name="test-suite-retrieveAllPersonsFlowTest" description="Test" doc:id="ca0c1315-f6fa-4881-adec-c57e1fd5d6d2" >
+		<munit:enable-flow-sources>
+	        <munit:enable-flow-source value="retrieveAllPersonsFlow"/>
+    	</munit:enable-flow-sources>
+		<munit:execution >
+			<ee:transform doc:name="Prepare test person" doc:id="3b14992a-3250-435c-8e6f-9ee10a2e4b2e" >
+				<ee:message >
+					<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+{
+	personId:  uuid(),
+ 	firstname: 'TestFirstname',
+ 	lastname: 'TestLastname',
+ 	age: 99,
+ 	address:
+    {
+	   	"streetAddress":"Test St.",
+	    "city":"TestCity",
+	    "state":"TS",
+	    "zipCode":"90401"
+	}
+}]]></ee:set-payload>
+				</ee:message>
+			</ee:transform>
+			<os:store doc:name="Store Person" doc:id="c9a79952-a7e6-42a7-9371-90769df92311" key="#[payload.personId]" objectStore="Object_store"/>
+			<http:request method="GET" doc:name="Request" doc:id="b2b587f1-0bc6-4c0b-87a2-fc931e1891e2" config-ref="HTTP_Request_configuration" path="/person">
+				<http:headers><![CDATA[#[output applicaton/java
+---
+{
+	"Content-Type" : "application/json"
+}]]]></http:headers>
+			</http:request>
+		</munit:execution>
+		<munit:validation>
+			<munit-tools:assert-that doc:name="Assert response status" doc:id="75bb7d0a-abd2-4526-8463-c826bb7507b0" message="Response status is not valid!" expression="#[attributes.statusCode]" is="#[MunitTools::equalTo(200)]"/>
+			<munit-tools:assert-that doc:name="Assert that response contains 1 object" doc:id="bdbb13ea-2cfb-42b6-b2c9-30fc64fa9fa3" expression="#[sizeOf(payload)]" message="One object expected in the response!" is="#[MunitTools::equalTo(1)]"/>
+			<munit-tools:assert-that doc:name="Assert that personId is set" doc:id="edd292fa-8a8c-41e4-817f-a7cda2d91cf1" expression="#[payload[0].personId]" is="#[MunitTools::notNullValue()]" message="Person ID not set!"/>
+			<munit-tools:assert-that doc:name="Assert lastname" doc:id="d1d2b2cf-c54a-4ea3-96bc-859e92a46d60" expression="#[payload[0].lastname]" is="#[MunitTools::equalTo('TestLastname')]" message="Lastname is not correct!"/>
+			<os:remove doc:name="Clean up" doc:id="8fe19626-26c9-4b21-a4fd-3f9a309d1287" key="#[payload[0].personId]" objectStore="Object_store"/>
+		</munit:validation>
+	</munit:test>
+
+
+</mule>

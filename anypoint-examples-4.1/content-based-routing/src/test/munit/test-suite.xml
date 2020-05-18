@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:munit="http://www.mulesoft.org/schema/mule/munit"
+	xmlns:munit-tools="http://www.mulesoft.org/schema/mule/munit-tools" xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+		http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+		http://www.mulesoft.org/schema/mule/munit http://www.mulesoft.org/schema/mule/munit/current/mule-munit.xsd
+		http://www.mulesoft.org/schema/mule/munit-tools  http://www.mulesoft.org/schema/mule/munit-tools/current/mule-munit-tools.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<munit:config name="test-suite.xml" />
+	<http:request-config name="HTTP_Request_configuration" doc:name="HTTP Request configuration" doc:id="3cfb1b75-5d2c-48b1-89c7-40bbfbe118c0" >
+		<http:request-connection host="localhost" port="${http.port}" />
+	</http:request-config>
+	<munit:test name="no-language-specified-routingFlowTest" description="Test" doc:id="80df2390-b586-4333-97fd-7048a17c3c4b" >
+		 <munit:enable-flow-sources>
+	        <munit:enable-flow-source value="content-based-routingFlow"/>
+    	</munit:enable-flow-sources>
+		<munit:execution>
+			<http:request method="GET" doc:name="Request" doc:id="b2b587f1-0bc6-4c0b-87a2-fc931e1891e2" config-ref="HTTP_Request_configuration" path="/">
+				<http:headers ><![CDATA[#[output applicaton/java
+---
+{
+	"Content-Type" : "application/json"
+}]]]></http:headers>
+
+</http:request>
+		</munit:execution>
+		<munit:validation >
+			<ee:transform doc:name="Transform Message" doc:id="8b6ac155-eb05-4a2d-96ab-6f74c32d7b4a" >
+				<ee:message >
+					<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+payload as String]]></ee:set-payload>
+				</ee:message>
+			</ee:transform>
+			<munit-tools:assert-that doc:name="Assert the response status" doc:id="75bb7d0a-abd2-4526-8463-c826bb7507b0" message="Response status is not valid!" expression="#[attributes.statusCode]" is="#[MunitTools::equalTo(200)]"/>
+			<munit-tools:assert-that doc:name="Assert the response body" doc:id="d1d2b2cf-c54a-4ea3-96bc-859e92a46d60" expression="#[payload]" is="#[MunitTools::equalTo('Hello!')]" message="Language is not correct!"/>
+		</munit:validation>
+	</munit:test>
+	<munit:test name="spanish-language-specified-routingFlowTest" description="Test" doc:id="80df2390-b586-4333-97fd-7048a17c3c4b" >
+		 <munit:enable-flow-sources>
+	        <munit:enable-flow-source value="content-based-routingFlow"/>
+    	</munit:enable-flow-sources>
+		<munit:execution>
+			<http:request method="GET" doc:name="Request" doc:id="b2b587f1-0bc6-4c0b-87a2-fc931e1891e2" config-ref="HTTP_Request_configuration" path="/">
+				<http:headers ><![CDATA[#[output applicaton/java
+---
+{
+	"Content-Type" : "application/json"
+}]]]></http:headers>
+				<http:query-params ><![CDATA[#[output applicaton/java
+---
+{
+	"language" : "Spanish"
+}]]]></http:query-params>
+
+
+</http:request>
+		</munit:execution>
+		<munit:validation >
+			<ee:transform doc:name="Transform Message" doc:id="8b6ac155-eb05-4a2d-96ab-6f74c32d7b4a" >
+				<ee:message >
+					<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+payload as String]]></ee:set-payload>
+				</ee:message>
+			</ee:transform>
+			<munit-tools:assert-that doc:name="Assert the response status" doc:id="75bb7d0a-abd2-4526-8463-c826bb7507b0" message="Response status is not valid!" expression="#[attributes.statusCode]" is="#[MunitTools::equalTo(200)]"/>
+			<munit-tools:assert-that doc:name="Assert the response body" doc:id="d1d2b2cf-c54a-4ea3-96bc-859e92a46d60" expression="#[payload]" is="#[MunitTools::equalTo('Hola!')]" message="Language is not correct!"/>
+		</munit:validation>
+	</munit:test>
+	<munit:test name="french-language-specified-routingFlowTest" description="Test" doc:id="80df2390-b586-4333-97fd-7048a17c3c4b" >
+		 <munit:enable-flow-sources>
+	        <munit:enable-flow-source value="content-based-routingFlow"/>
+    	</munit:enable-flow-sources>
+		<munit:execution>
+			<http:request method="GET" doc:name="Request" doc:id="b2b587f1-0bc6-4c0b-87a2-fc931e1891e2" config-ref="HTTP_Request_configuration" path="/">
+				<http:headers ><![CDATA[#[output applicaton/java
+---
+{
+	"Content-Type" : "application/json"
+}]]]></http:headers>
+				<http:query-params ><![CDATA[#[output applicaton/java
+---
+{
+	"language" : "French"
+}]]]></http:query-params>
+
+
+</http:request>
+		</munit:execution>
+		<munit:validation >
+			<ee:transform doc:name="Transform Message" doc:id="8b6ac155-eb05-4a2d-96ab-6f74c32d7b4a" >
+				<ee:message >
+					<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+payload as String]]></ee:set-payload>
+				</ee:message>
+			</ee:transform>
+			<munit-tools:assert-that doc:name="Assert the response status" doc:id="75bb7d0a-abd2-4526-8463-c826bb7507b0" message="Response status is not valid!" expression="#[attributes.statusCode]" is="#[MunitTools::equalTo(200)]"/>
+			<munit-tools:assert-that doc:name="Assert the response body" doc:id="d1d2b2cf-c54a-4ea3-96bc-859e92a46d60" expression="#[payload]" is="#[MunitTools::equalTo('Bonjour!')]" message="Language is not correct!"/>
+		</munit:validation>
+	</munit:test>
+	<munit:test name="invalid-language-specified-routingFlowTest" description="Test" doc:id="80df2390-b586-4333-97fd-7048a17c3c4b" >
+		 <munit:enable-flow-sources>
+	        <munit:enable-flow-source value="content-based-routingFlow"/>
+    	</munit:enable-flow-sources>
+		<munit:execution>
+			<http:request method="GET" doc:name="Request" doc:id="b2b587f1-0bc6-4c0b-87a2-fc931e1891e2" config-ref="HTTP_Request_configuration" path="/">
+				<http:headers ><![CDATA[#[output applicaton/java
+---
+{
+	"Content-Type" : "application/json"
+}]]]></http:headers>
+				<http:query-params ><![CDATA[#[output applicaton/java
+---
+{
+	"language" : "XYZ"
+}]]]></http:query-params>
+
+
+</http:request>
+		</munit:execution>
+		<munit:validation >
+			<ee:transform doc:name="Transform Message" doc:id="8b6ac155-eb05-4a2d-96ab-6f74c32d7b4a" >
+				<ee:message >
+					<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+payload as String]]></ee:set-payload>
+				</ee:message>
+			</ee:transform>
+			<munit-tools:assert-that doc:name="Assert the response status" doc:id="75bb7d0a-abd2-4526-8463-c826bb7507b0" message="Response status is not valid!" expression="#[attributes.statusCode]" is="#[MunitTools::equalTo(200)]"/>
+			<munit-tools:assert-that doc:name="Assert the response body" doc:id="d1d2b2cf-c54a-4ea3-96bc-859e92a46d60" expression="#[payload]" is="#[MunitTools::equalTo('Hello!')]" message="Language is not correct!"/>
+		</munit:validation>
+	</munit:test>
+	<munit:test name="test-suite-reply-in-default-languageSub_FlowTest" description="Test" doc:id="10b5781b-1cfc-47b9-88d6-013de4251165" >
+		<munit:execution >
+			<flow-ref doc:name="Flow-ref to reply-in-default-languageSub_Flow" doc:id="4c5f9f97-e1f6-430e-b736-59f6aa0163c6" name="reply-in-default-languageSub_Flow"/>
+		</munit:execution>
+		<munit:validation >
+			<munit-tools:assert-that doc:name="Assert variable 'language'" doc:id="fc1da697-2cce-4dc4-ac89-b2af0faad812" expression="#[vars.language]" is="#[MunitTools::equalTo('English')]" message="Invalid value in variable 'language'!"/>
+			<munit-tools:assert-that doc:name="Assert payload" doc:id="876fe0cd-aa96-412b-a5a7-3974a485c892" expression="#[payload]" is="#[MunitTools::equalTo('Hello!')]" message="Invalid payload!"/>
+		</munit:validation>
+	</munit:test>
+
+
+</mule>

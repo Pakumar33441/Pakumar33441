@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:file="http://www.mulesoft.org/schema/mule/file"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:munit="http://www.mulesoft.org/schema/mule/munit"
+	xmlns:munit-tools="http://www.mulesoft.org/schema/mule/munit-tools" xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+		http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+		http://www.mulesoft.org/schema/mule/munit http://www.mulesoft.org/schema/mule/munit/current/mule-munit.xsd
+		http://www.mulesoft.org/schema/mule/munit-tools  http://www.mulesoft.org/schema/mule/munit-tools/current/mule-munit-tools.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd">
+	<munit:config name="test-suite.xml" />
+	<http:request-config name="HTTP_Test_Request_configuration" doc:name="HTTP Request configuration" doc:id="3cfb1b75-5d2c-48b1-89c7-40bbfbe118c0" >
+		<http:request-connection host="localhost" port="${http.port}" />
+	</http:request-config>
+	<munit:test name="test-suite-get:\currencies:currency-configTest" description="Test" doc:id="1c9f7463-90c6-487f-becb-1639043b68a9">
+		<munit:enable-flow-sources>
+	        <munit:enable-flow-source value="currency-main"/>
+	        <munit:enable-flow-source value="get:\currencies:currency-config"/>
+    	</munit:enable-flow-sources>
+		<munit:execution >
+			<http:request method="GET" doc:name="Request" doc:id="4ce19629-39ac-4390-86ac-695b870f0d5a" path="/api/currencies" config-ref="HTTP_Test_Request_configuration"/>
+		</munit:execution>
+		<munit:validation >
+			<ee:transform doc:name="Transform Message" doc:id="37173c56-dff1-45d9-9b45-342c1aecde6b" >
+				<ee:message >
+					<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+payload]]></ee:set-payload>
+				</ee:message>
+			</ee:transform>
+			<munit-tools:assert-that doc:name="Assert response status" doc:id="75bb7d0a-abd2-4526-8463-c826bb7507b0" message="Response status is not valid!" expression="#[attributes.statusCode]" is="#[MunitTools::equalTo(200)]"/>
+			<munit-tools:assert-that doc:name="Assert that content type is correct" doc:id="17a290f8-7bf1-484a-a62b-ba1c96589e77" expression='#[attributes.headers."content-type"]' is="#[MunitTools::equalTo('application/json')]" message="Incorrect content type!"/>
+			<munit-tools:assert-that doc:name="Assert that response body is correct" doc:id="edd292fa-8a8c-41e4-817f-a7cda2d91cf1" expression="#[write(payload, 'application/json', {'indent': false})]" is="#[MunitTools::equalTo('{&quot;USD&quot;: [{&quot;currency&quot;: &quot;EUR&quot;,&quot;ratio&quot;: 0.92},{&quot;currency&quot;: &quot;ARS&quot;,&quot;ratio&quot;: 8.76},{&quot;currency&quot;: &quot;GBP&quot;,&quot;ratio&quot;: 0.66}]}')]" message="Incorect response body!"/>
+		</munit:validation>
+	</munit:test>
+	<munit:test name="test-suite-booksFlowTest" description="Test" doc:id="ebc0442f-1120-4ae6-a564-42457d6fae33" >
+		<munit:enable-flow-sources>
+	        <munit:enable-flow-source value="booksFlow"/>
+			<munit:enable-flow-source value="get:\currencies:currency-config" />
+			<munit:enable-flow-source value="currency-main" />
+    	</munit:enable-flow-sources>
+		<munit:execution >
+			<try doc:name="Try" doc:id="982736d2-9363-4129-8408-2820c9b87721" >
+				<file:delete doc:name="Delete orders.json" doc:id="ba86f1fc-24da-43a2-91b8-3864f3249d6b" config-ref="File_Config" path="output/orders.json" />
+				<file:delete doc:name="Delete report.csv" doc:id="b7f1bd36-e754-4fd0-a969-d349911a3a2f" config-ref="File_Config" path="output/report.csv" />
+				<error-handler >
+					<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="3a782c46-6629-4a4e-9af9-03507cbf17cb" >
+						<logger level="INFO" doc:name="Log output files not found" doc:id="b56ec93d-6668-40c7-9bef-a47f21769481" message="Output files can't be deleted as they does not exist."/>
+					</on-error-continue>
+				</error-handler>
+			</try>
+			<flow-ref doc:name="booksFlow" doc:id="ff128909-9ab4-4b59-9b08-ae02ec67ab2b" name="booksFlow"/>
+		</munit:execution>
+		<munit:validation >
+			<file:read doc:name="Read orders.json" doc:id="55c6b096-0661-4727-997d-b8abbad7b6c8" config-ref="File_Config" path="output/orders.json" outputMimeType="application/json"/>
+			<ee:transform doc:name="Transform Message" doc:id="33c18ee7-2c6b-4efd-98b7-75ee525f48af" >
+				<ee:message >
+					<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+payload]]></ee:set-payload>
+				</ee:message>
+			</ee:transform>
+			<munit-tools:assert-that doc:name="Assert orders.json" doc:id="edd292fa-8a8c-41e4-817f-a7cda2d91cf1" expression="#[write(payload, 'application/json', {'indent': false})]" is="#[MunitTools::equalTo('{&quot;orders&quot;: [{&quot;title&quot;: &quot;Everyday Italian&quot;,&quot;prices&quot;: [{&quot;price&quot;: 27.6,&quot;currency&quot;: &quot;EUR&quot;},{&quot;price&quot;: 262.8,&quot;currency&quot;: &quot;ARS&quot;},{&quot;price&quot;: 19.8,&quot;currency&quot;: &quot;GBP&quot;}],&quot;authors&quot;: {&quot;author&quot;: &quot;Giada De Laurentiis&quot;}},{&quot;title&quot;: &quot;Harry Potter&quot;,&quot;prices&quot;: [{&quot;price&quot;: 27.5908,&quot;currency&quot;: &quot;EUR&quot;},{&quot;price&quot;: 262.7124,&quot;currency&quot;: &quot;ARS&quot;},{&quot;price&quot;: 19.7934,&quot;currency&quot;: &quot;GBP&quot;}],&quot;authors&quot;: {&quot;author&quot;: &quot;J K. Rowling&quot;}}]}')]" message="Incorect content in file orders.json!"/>
+			<file:read doc:name="Read report.csv" doc:id="55c6b096-0661-4727-997d-b8abbad7b6c8" config-ref="File_Config" path="output/report.csv" outputMimeType="application/csv"/>
+			<munit-tools:assert-that doc:name="Assert report.csv" doc:id="edd292fa-8a8c-41e4-817f-a7cda2d91cf1" expression="#[write(payload, 'application/json', {'indent': false})]" is="#[MunitTools::equalTo('[{&quot;totalNumberOfItems&quot;: &quot;4&quot;,&quot;totalAmount&quot;: &quot;149.93&quot;,&quot;averageSellingPrice&quot;: &quot;37.4825&quot;}]')]" message="Incorect content in file report.csv!"/>
+			<file:delete doc:name="Delete orders.json" doc:id="ba86f1fc-24da-43a2-91b8-3864f3249d6b" config-ref="File_Config" path="output/orders.json"/>
+			<file:delete doc:name="Delete report.csv" doc:id="b7f1bd36-e754-4fd0-a969-d349911a3a2f" config-ref="File_Config" path="output/report.csv"/>
+		</munit:validation>
+	</munit:test>
+
+
+</mule>

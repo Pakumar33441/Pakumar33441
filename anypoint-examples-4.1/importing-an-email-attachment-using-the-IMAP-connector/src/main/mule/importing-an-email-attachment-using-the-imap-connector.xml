@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:file="http://www.mulesoft.org/schema/mule/file"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:email="http://www.mulesoft.org/schema/mule/email"
+	xmlns:tls="http://www.mulesoft.org/schema/mule/tls" xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd 
+http://www.mulesoft.org/schema/mule/email http://www.mulesoft.org/schema/mule/email/current/mule-email.xsd 
+http://www.mulesoft.org/schema/mule/tls http://www.mulesoft.org/schema/mule/tls/current/mule-tls.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd">
+	
+	<configuration-properties file="mule-artifact.properties" doc:name="Configuration properties" doc:id="8db1f1cc-bf49-4886-a55d-aae29d462037" />
+	<tls:context name="TLS_Context" doc:name="TLS Context" doc:id="4073afd4-acfc-474c-9dc9-53563501e4e9">
+		<tls:trust-store insecure="true" />
+	</tls:context>
+	<email:imap-config name="Email_IMAP" doc:name="Email IMAP" doc:id="733486ec-01b8-4f6f-b3ba-9c3e266373c4" >
+		<email:imaps-connection host="${imap.host}" user="${imap.user}" password="${imap.password}" tlsContext="TLS_Context" port="${imap.port}">
+			<email:properties >
+				<email:property key="mail.imap.ssl.enable" value="true" />
+			</email:properties>
+		</email:imaps-connection>
+	</email:imap-config>
+	
+
+
+	<file:config name="File_Config" doc:name="File Config" doc:id="3a2bb985-6b9a-42c9-b497-d6b39886aef1" >
+		<file:connection workingDir="${working.directory}" />
+	</file:config>
+	<flow name="importing-an-email-attachment-using-the-imap-connector" doc:id="35894640-2810-4e74-87d9-4b91ca68a8ee" >
+		<scheduler doc:name="Scheduler" doc:id="103aecb2-d9c1-47c7-a2cc-2dcab946239c" >
+			<scheduling-strategy >
+				<fixed-frequency frequency="10000"/>
+			</scheduling-strategy>
+		</scheduler>
+		<email:list-imap config-ref="Email_IMAP" doc:name="Read csv attachments" doc:id="afa30093-393b-4e71-86dc-062f76d99296">
+			<email:imap-matcher subjectRegex="KJHGIT" fromRegex="@mulesoft"/>
+		</email:list-imap>
+		<foreach doc:name="For Each" doc:id="b33e6edd-3f15-4f20-997f-47a8156b300a" collection="#[payload]">
+			<ee:transform doc:name="Map CSV to XML" doc:id="bf82bebf-fe55-4703-8a2f-8765ed49580a">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/xml
+var order = payload.attachments['input.csv']
+---
+
+orders: {
+	(order map 
+	order: {
+		orderId : $.orderId,
+		name : $.name,
+		units : $.units,
+		pricePerUnit : $.pricePerUnit
+	}
+	)
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+			<logger level="INFO" doc:name="Log the converted XML" doc:id="8789b64a-b192-4d20-bda6-a9df41d602a5" message="#[output application/xml --- payload]" />
+			<file:write doc:name="Write to file" doc:id="57e66201-4f04-4c73-9d86-3beea20c46b4" config-ref="File_Config" path='#["orders-" ++ uuid()[0 to 7] ++ ".xml"]'/>		
+		</foreach>
+</flow>
+	
+	
+	</mule>

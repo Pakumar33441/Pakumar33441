@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:munit="http://www.mulesoft.org/schema/mule/munit" xmlns:munit-tools="http://www.mulesoft.org/schema/mule/munit-tools"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xsi:schemaLocation="
+		http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+		http://www.mulesoft.org/schema/mule/munit http://www.mulesoft.org/schema/mule/munit/current/mule-munit.xsd
+		http://www.mulesoft.org/schema/mule/munit-tools  http://www.mulesoft.org/schema/mule/munit-tools/current/mule-munit-tools.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<munit:config name="test-suite.xml" doc:name="MUnit configuration"/>
+	<http:request-config name="HTTP_Request_configuration" doc:name="HTTP Request configuration" doc:id="67364da2-3b1c-46b2-b2fa-285183a1120e" basePath="api" >
+		<http:request-connection host="localhost" port="${http.port}" />
+	</http:request-config>
+	<munit:test name="test-suite-put" description="Test" doc:id="03d9cad4-1f5f-4780-8d43-facbb0533751" >
+		<munit:enable-flow-sources>	        
+	        <munit:enable-flow-source value="api-main"/>
+	        <munit:enable-flow-source value="put:\munit:api-config"/>	        
+    	</munit:enable-flow-sources>
+		<munit:execution >
+			<http:request method="PUT" doc:name="Request" doc:id="ddf62d27-4de0-4f11-9f94-d71845a17388" config-ref="HTTP_Request_configuration" path="/munit"/>
+		</munit:execution>
+		<munit:validation >
+			<ee:transform doc:name="Stream -&gt; String" doc:id="b053f0c8-fa82-49d7-a399-932f51002979" >
+				<ee:message >
+					<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+payload]]></ee:set-payload>
+				</ee:message>
+			</ee:transform>
+			<munit-tools:assert-that doc:name="Assert that" doc:id="76c72835-5d19-4019-adfc-5cf16778b322" expression="#[attributes.statusCode]" is="#[MunitTools::equalTo(201)]" message="The HTTP Status code is not correct!"/>
+			<munit-tools:assert-that doc:name="Assert that" doc:id="62934e5a-e527-4fe0-a76c-496b562d4fbd" expression="#[payload]" is="#[MunitTools::equalTo('PUT RESPONSE')]" message="The response payload is not correct!"/>
+		</munit:validation>
+	</munit:test>
+	<munit:test name="test-suite-delete" description="Test" doc:id="f48486d9-cb5d-4a6b-91ff-fa0f12c37ed7" >
+		<munit:enable-flow-sources>	        
+	        <munit:enable-flow-source value="api-main"/>
+	        <munit:enable-flow-source value="delete:\munit:api-config"/>
+    	</munit:enable-flow-sources>
+		<munit:execution >
+			<http:request method="DELETE" doc:name="Request" doc:id="ddf62d27-4de0-4f11-9f94-d71845a17388" config-ref="HTTP_Request_configuration" path="/munit"/>
+		</munit:execution>
+		<munit:validation >
+			<ee:transform doc:name="Stream -&gt; String" doc:id="b053f0c8-fa82-49d7-a399-932f51002979" >
+				<ee:message >
+					<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+payload]]></ee:set-payload>
+				</ee:message>
+			</ee:transform>
+			<munit-tools:assert-that doc:name="Assert that" doc:id="76c72835-5d19-4019-adfc-5cf16778b322" expression="#[attributes.statusCode]" is="#[MunitTools::equalTo(200)]" message="The HTTP Status code is not correct!"/>
+			<munit-tools:assert-that doc:name="Assert that" doc:id="62934e5a-e527-4fe0-a76c-496b562d4fbd" expression="#[payload]" is="#[MunitTools::equalTo('DELETE RESPONSE')]" message="The response payload is not correct!"/>
+		</munit:validation>
+	</munit:test>
+	<munit:test name="test-suite-get" description="Test" doc:id="e3448a78-f22d-4490-8db5-5585e37031d7" >
+		<munit:enable-flow-sources>	        
+	        <munit:enable-flow-source value="api-main"/>
+	        <munit:enable-flow-source value="get:\munit:api-config"/>
+    	</munit:enable-flow-sources>
+		<munit:execution >
+			<http:request method="GET" doc:name="Request" doc:id="ddf62d27-4de0-4f11-9f94-d71845a17388" config-ref="HTTP_Request_configuration" path="/munit"/>
+		</munit:execution>
+		<munit:validation >
+			<ee:transform doc:name="Stream -&gt; String" doc:id="b053f0c8-fa82-49d7-a399-932f51002979" >
+				<ee:message >
+					<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+payload]]></ee:set-payload>
+				</ee:message>
+			</ee:transform>
+			<munit-tools:assert-that doc:name="Assert that" doc:id="76c72835-5d19-4019-adfc-5cf16778b322" expression="#[attributes.statusCode]" is="#[MunitTools::equalTo(200)]" message="The HTTP Status code is not correct!"/>
+			<munit-tools:assert-that doc:name="Assert that" doc:id="62934e5a-e527-4fe0-a76c-496b562d4fbd" expression="#[payload]" is="#[MunitTools::equalTo('GET RESPONSE')]" message="The response payload is not correct!"/>
+		</munit:validation>
+	</munit:test>
+	<munit:test name="test-suite-post" description="Test" doc:id="04634994-deac-4b20-a6ff-023abc2ba968" >
+		<munit:enable-flow-sources>	        
+	        <munit:enable-flow-source value="api-main"/>
+	        <munit:enable-flow-source value="post:\munit:api-config"/>
+    	</munit:enable-flow-sources>
+		<munit:execution >
+			<http:request method="POST" doc:name="Request" doc:id="ddf62d27-4de0-4f11-9f94-d71845a17388" config-ref="HTTP_Request_configuration" path="/munit"/>
+		</munit:execution>
+		<munit:validation >
+			<ee:transform doc:name="Stream -&gt; String" doc:id="b053f0c8-fa82-49d7-a399-932f51002979" >
+				<ee:message >
+					<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+payload]]></ee:set-payload>
+				</ee:message>
+			</ee:transform>
+			<munit-tools:assert-that doc:name="Assert that" doc:id="76c72835-5d19-4019-adfc-5cf16778b322" expression="#[attributes.statusCode]" is="#[MunitTools::equalTo(201)]" message="The HTTP Status code is not correct!"/>
+			<munit-tools:assert-that doc:name="Assert that" doc:id="62934e5a-e527-4fe0-a76c-496b562d4fbd" expression="#[payload]" is="#[MunitTools::equalTo('POST RESPONSE')]" message="The response payload is not correct!"/>
+		</munit:validation>
+	</munit:test>
+</mule>

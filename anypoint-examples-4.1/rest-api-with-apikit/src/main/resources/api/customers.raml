@@ -1,0 +1,46 @@
+#%RAML 1.0
+title: REST API with APIkit example
+version: v1.0
+baseUri: https://localhost:8081/api
+
+types: 
+  customer:
+    type: object
+    properties:
+      firstName?: string
+      lastName?: string
+      phone?: string
+      email?: string
+
+/customers:
+  displayName: Customers endpoint
+  get:
+    description: Get list of Customers
+  post:
+    description: Create customer contact
+    body:
+      application/json:
+        type: customer
+        example: |
+              {
+                "firstName": "John",
+                "lastName": "Doe",
+                "phone": "123456789",
+                "email": "john.doe@email.com"
+              }
+
+  /{customerId}:
+    get:
+      description: Return customer information by customerId
+    put:
+      description: Update customer by customerId
+      body:
+        application/json:
+          type: customer
+          example: |
+                {
+                  "firstName": "John",
+                  "lastName": "Doe",
+                  "phone": "123456789",
+                  "email": "john.doe@email.com"
+                }

@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:munit="http://www.mulesoft.org/schema/mule/munit"
+	xmlns:munit-tools="http://www.mulesoft.org/schema/mule/munit-tools" xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xsi:schemaLocation="
+		http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+		http://www.mulesoft.org/schema/mule/munit http://www.mulesoft.org/schema/mule/munit/current/mule-munit.xsd
+		http://www.mulesoft.org/schema/mule/munit-tools  http://www.mulesoft.org/schema/mule/munit-tools/current/mule-munit-tools.xsd
+http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd">
+	<munit:config name="new-test-suite.xml" />
+	<munit:test name="test-suite-CreateNewSalesforceAccountFlowTest" description="Test" doc:id="be1d97b4-0447-49bc-a878-bce46770548c" >
+		<munit:execution >
+			<flow-ref doc:name="CreateNewSalesforceAccountFlow" doc:id="049e86ba-0c0c-421c-8e6b-6e6c3966462a" name="CreateNewSalesforceAccountFlow"/>
+		</munit:execution>
+		<munit:validation>
+			<munit-tools:assert-that doc:name="Assert that 2 records were imported" doc:id="181b7819-9dc4-4f8b-85fa-8609eb83d045" expression="#[sizeOf(payload)]" is="#[MunitTools::equalTo(2)]"/>
+			<munit-tools:assert-that doc:name="Assert the Account #1 is created" doc:id="w0e99c53-0a20-4d95-a6d8-994832126f16" expression="#[payload[0].success]" is="#[MunitTools::equalTo(true)]" message="Account creation failed!"/>
+			<munit-tools:assert-that doc:name="Assert the Account #2 is created" doc:id="w0e99c53-0a20-4d95-a6d8-994832126f12" expression="#[payload[1].success]" is="#[MunitTools::equalTo(true)]" message="Account creation failed!"/>
+			<salesforce:retrieve type="Account" doc:name="Retrieve accounts" doc:id="e49fd1b3-019e-4f99-9575-01fb62cba881" config-ref="Salesforce_Sfdc_config">
+				<salesforce:retrieve-request><![CDATA[#[{
+Ids: payload.id,
+Fields: ['Name','BillingStreet','BillingCity','BillingState','BillingPostalCode','Region__c']
+}]]]></salesforce:retrieve-request>
+			</salesforce:retrieve>
+			<munit-tools:assert-that doc:name="Assert sales region in the Account #1 is correct" doc:id="6a08b613-9ec1-445e-a3fa-c7d2d40c1952" is="#[MunitTools::equalTo('South East')]" expression="#[payload[0].Region__c]" message="Incorrect sales region!" />
+			<munit-tools:assert-that doc:name="Assert sales region in the Account #2 is correct" doc:id="6a08b613-9ec1-445e-a3fa-c7d2d40c1952" expression="#[payload[1].Region__c]" is="#[MunitTools::equalTo('West Coast')]" message="Incorrect sales region!" />
+			<salesforce:delete doc:name="Delete" doc:id="f8da7258-85d7-4b4d-b38a-8594f82804e4" config-ref="Salesforce_Sfdc_config">
+					<salesforce:delete-ids><![CDATA[#[payload.Id]]]></salesforce:delete-ids>
+				</salesforce:delete>
+		
+
+</munit:validation>		
+	</munit:test>	
+	<munit:test name="test-suite-LookUpSalesRegionFlowTest" description="Test" doc:id="519ae15f-14e9-4a9a-97d9-984c0d5977c0" >
+		<munit:execution >
+			<set-payload value='ma' doc:name="Set Payload" doc:id="c2015394-1ad7-467e-a7e8-8407ffa17102" />
+			<flow-ref doc:name="LookUpSalesRegionFlow" doc:id="c245fc2a-2fba-4b2b-b243-c5f3047c6d1a" name="LookUpSalesRegionFlow"/>
+		</munit:execution>
+		<munit:validation >
+			<munit-tools:assert-that doc:name="Assert sales region" doc:id="c2b2084f-c914-4189-b2c4-c355f53ade37" is="#[MunitTools::equalTo('North East')]" expression="#[payload.region]"/>
+		</munit:validation>
+	</munit:test>
+	<munit:test name="test-suite-LookUpSalesRegionFlowNegativeTest" description="Test" doc:id="519ae15f-14e9-4a9a-97d9-984c0d5977c0" >
+		<munit:execution >
+			<set-payload value='YZ' doc:name="Set Payload" doc:id="c2015394-1ad7-467e-a7e8-8407ffa17102" />
+			<flow-ref doc:name="LookUpSalesRegionFlow" doc:id="c245fc2a-2fba-4b2b-b243-c5f3047c6d1a" name="LookUpSalesRegionFlow"/>
+		</munit:execution>
+		<munit:validation >
+			<munit-tools:assert-that doc:name="Assert sales region" doc:id="c2b2084f-c914-4189-b2c4-c355f53ade37" is="#[MunitTools::equalTo('UNKNOWN')]" expression="#[payload.region]"/>
+		</munit:validation>
+	</munit:test>
+
+</mule>

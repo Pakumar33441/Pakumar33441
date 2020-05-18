@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:munit="http://www.mulesoft.org/schema/mule/munit"
+	xmlns:munit-tools="http://www.mulesoft.org/schema/mule/munit-tools" xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xsi:schemaLocation="
+		http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+		http://www.mulesoft.org/schema/mule/munit http://www.mulesoft.org/schema/mule/munit/current/mule-munit.xsd
+		http://www.mulesoft.org/schema/mule/munit-tools  http://www.mulesoft.org/schema/mule/munit-tools/current/mule-munit-tools.xsd
+http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd">
+	<munit:config name="new-test-suite.xml" />
+	<munit:test name="new-test-suite-import-contacts-into-salesforceFlowTest" description="Test" doc:id="a8e4f6e6-7605-498b-8fc7-f638b855c957" >
+		<munit:execution >
+			<flow-ref doc:name="import-contacts-into-salesforceFlow" doc:id="16b3e85f-7336-449f-a2c5-c7f6050593f4" name="import-contacts-into-salesforceFlow"/>
+		</munit:execution>
+		<munit:validation >
+			<munit-tools:assert-that doc:name="Assert that 2 records were imported" doc:id="181b7819-9dc4-4f8b-85fa-8609eb83d045" expression="#[sizeOf(payload)]" is="#[MunitTools::equalTo(2)]"/>
+			<munit-tools:assert-that doc:name="Assert the Contact #1 is created" doc:id="w0e99c53-0a20-4d95-a6d8-994832126f16" expression="#[payload[0].success]" is="#[MunitTools::equalTo(true)]"/>
+			<munit-tools:assert-that doc:name="Assert the Contact #2 is created" doc:id="e0e99c53-0a20-4d95-a6d8-994832126f16" expression="#[payload[1].success]" is="#[MunitTools::equalTo(true)]"/>
+			<salesforce:retrieve type="Contact" doc:name="Retrieve Contacts" doc:id="e49fd1b3-019e-4f99-9575-01fb62cba881" config-ref="Salesforce">
+				<salesforce:retrieve-request><![CDATA[#[{
+Ids: payload.id,
+Fields: ['FirstName','LastName']
+}]]]></salesforce:retrieve-request>
+			</salesforce:retrieve>
+			<munit-tools:assert-that doc:name="Assert first name in Contact #1 is correct" doc:id="6a08b613-9ec1-445e-a3fa-c7d2d40c1952" is="#[MunitTools::equalTo('John')]" expression="#[payload[0].FirstName]" message="Incorrect first name!" />
+			<munit-tools:assert-that doc:name="Assert first name in Contact #2 is correct" doc:id="6a08b613-9ec1-445e-a3fa-c7d2d40c1952" expression="#[payload[1].FirstName]" is="#[MunitTools::equalTo('Jane')]" message="Incorrect first name!" />
+			<salesforce:delete doc:name="Clean up" doc:id="f8da7258-85d7-4b4d-b38a-8594f82804e4" config-ref="Salesforce">
+					<salesforce:delete-ids><![CDATA[#[payload.Id]]]></salesforce:delete-ids>
+				</salesforce:delete>
+					
+		</munit:validation>
+	</munit:test>
+
+
+</mule>

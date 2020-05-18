@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:tls="http://www.mulesoft.org/schema/mule/tls" xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce"
+	xmlns:oauth="http://www.mulesoft.org/schema/mule/oauth"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/oauth http://www.mulesoft.org/schema/mule/oauth/current/mule-oauth.xsd
+http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd
+http://www.mulesoft.org/schema/mule/tls http://www.mulesoft.org/schema/mule/tls/current/mule-tls.xsd">
+	<salesforce:sfdc-config name="Salesforce_config" doc:name="Salesforce Sfdc config" doc:id="3fffd771-d6f0-4495-8724-35782b650ac7" >
+		<salesforce:config-with-oauth-connection display="POPUP">
+			<salesforce:oauth-authorization-code consumerKey="${sfdc.key}" consumerSecret="${sfdc.secret}" resourceOwnerId="demo"/>
+			<salesforce:oauth-callback-config listenerConfig="HTTP_Listener_config" callbackPath="/oauth2callback" authorizePath="/authorize" externalCallbackUrl="http://localhost:8081/oauth2callback"/>
+		</salesforce:config-with-oauth-connection>
+	</salesforce:sfdc-config>
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="d4f19c1a-2586-434a-a54a-f68b6d799e0c" >
+		<http:listener-connection host="localhost" port="${http.port}"/>
+	</http:listener-config>
+	<configuration-properties file="mule-artifact.properties" doc:name="Configuration properties" doc:id="310748ba-a55c-47bc-a2c0-f644a9a35e78" />
+	<flow name="authenticating-salesforce-using-oauth2Flow" doc:id="453b7d06-9ca8-4864-91ac-b4825ca95722" >
+		<http:listener config-ref="HTTP_Listener_config" path="/contacts" doc:name="Listener" doc:id="46d6397c-adab-4581-aa5a-09977a4e8eaa" />
+		<salesforce:query config-ref="Salesforce_config" doc:name="Perform a query at Salesforce" doc:id="fedf5f55-4309-41f6-a474-807a4d808102">
+			<salesforce:salesforce-query >SELECT id,lastname,lastmodifieddate from contact limit 10</salesforce:salesforce-query>
+		</salesforce:query>
+		<foreach doc:name="For Each" doc:id="cacd61e8-4b92-4d62-afa7-08161d808a55" >
+			<logger level="INFO" doc:name="Log the result" doc:id="7f9ad1ce-ab6a-48c5-b5a5-225295def6c5" message="#['Contact: ' ++ write(payload, 'application/json', {&quot;indent&quot;: false})]"/>
+		</foreach>
+		<set-payload value="#['Salesforce query returned ' ++ sizeOf(payload) ++ ' contacts.']" doc:name="Set Payload to formatted output" doc:id="365add52-0de2-4c2f-9943-398c1df58340" mimeType="text/plain"/>
+	</flow>
+</mule>

@@ -1,0 +1,254 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:netsuite="http://www.mulesoft.org/schema/mule/netsuite"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:munit="http://www.mulesoft.org/schema/mule/munit"
+	xmlns:munit-tools="http://www.mulesoft.org/schema/mule/munit-tools"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd 
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd 
+		http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+		http://www.mulesoft.org/schema/mule/munit http://www.mulesoft.org/schema/mule/munit/current/mule-munit.xsd
+		http://www.mulesoft.org/schema/mule/munit-tools  http://www.mulesoft.org/schema/mule/munit-tools/current/mule-munit-tools.xsd
+http://www.mulesoft.org/schema/mule/netsuite http://www.mulesoft.org/schema/mule/netsuite/current/mule-netsuite.xsd">
+	<munit:config name="test-suite.xml" />
+	<http:request-config name="HTTP_Request_configuration"
+		doc:name="HTTP Request configuration" doc:id="0dc11f13-58b2-4402-b562-ed2b2eab295a">
+		<http:request-connection host="localhost" port="${http.port}"
+			connectionIdleTimeout="300000" />
+	</http:request-config>
+	<munit:test name="get:\opportunities:netsuite-api-configTest"
+		description="Test" doc:id="30f5f6dd-3bba-44ed-9a4f-e7d89c67e863">
+		<munit:enable-flow-sources>
+			<munit:enable-flow-source value="netsuite-api-main" />
+			<munit:enable-flow-source value="get:\opportunities:netsuite-api-config" />
+		</munit:enable-flow-sources>
+		<munit:execution>
+			<flow-ref doc:name="createTestCustomer" doc:id="1a055849-7988-4f15-8eba-8ae65d3cae11"
+				name="createTestCustomer" />
+ 			<flow-ref doc:name="createTestOpportunity" doc:id="ec74ccdd-e44b-4dce-b8b4-a3bfe110b266"
+ 				name="createTestOpportunity" />
+			<http:request method="GET"
+				doc:name="Request to /api/opportunities?title=TestSystemsOpportunity"
+				doc:id="ed613899-60bd-4654-8c85-a0930951dd12" config-ref="HTTP_Request_configuration"
+				path="/api/opportunities?title=TestSystemsOpportunity" >
+			</http:request>
+		</munit:execution>
+		<munit:validation>
+			<ee:transform doc:name="Transform response"
+				doc:id="8094eae8-0472-4385-8530-3eb7fe407a46">
+				<ee:message>
+					<ee:set-payload><![CDATA[%dw 2.0
+output application/java
+---
+payload[0].title]]></ee:set-payload>
+				</ee:message>
+			</ee:transform>
+			<munit-tools:assert-that
+				doc:name="Assert that title is equal to 'TestSystemsOpportunity'"
+				doc:id="fa747626-9c2f-4336-9a6a-b1fec144f7a5" expression="#[payload]"
+				is="#[MunitTools::equalTo('TestSystemsOpportunity')]" />
+			<flow-ref doc:name="deleteTestOpportunity" doc:id="39f692cd-a8e4-45e9-b9dc-8d8a80e34908"
+				name="deleteTestOpportunity" />
+			<flow-ref doc:name="deleteTestCustomer" doc:id="a47401e5-4864-4a0e-8ca0-e9b9c2ed7b0a"
+				name="deleteTestCustomer" />
+		</munit:validation>
+	</munit:test>
+	<sub-flow name="createTestOpportunity" doc:id="fd3bfe32-eb38-4140-b6fa-c7f855bded5c">
+		<ee:transform doc:name="Prepare request with test opportunity"
+			doc:id="4f573a3e-cd9d-4c8b-bedd-73fa3cefa5ee">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/java
+---
+{
+	externalId 			: "2343251",
+	title 				: "TestSystemsOpportunity",
+	entity 				: {
+		internalId		: vars.testCustomerInternalId,
+		"type"			: 'CUSTOMER'
+	},
+	entityStatus		: {
+		internalId		: 13,
+		"type"			: 'CUSTOMER_STATUS'
+	}
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<netsuite:upsert-record recordType="OPPORTUNITY"
+			doc:name="Upsert opportunity" doc:id="9e0337de-c59a-4a06-84a8-71160edf5bc2"
+			config-ref="NetSuite_Config" />
+		<set-variable value="#[output application/java --- payload.baseRef.internalId]"
+			doc:name="Set testCustomerInternalId variable" doc:id="20aa7314-17c1-44ea-94e2-639aa55db88e"
+			variableName="testOpportunityInternalId" mimeType="application/java" />
+	</sub-flow>
+	<sub-flow name="deleteTestOpportunity" doc:id="45e0b223-7964-4266-9234-49ea0b3f9d8d">
+		<ee:transform doc:name="Prepare delete test opportunity request"
+			doc:id="6adfb047-595a-4ac8-8147-a3d0e7fda58a">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/java
+---
+{
+    internalId: vars.testOpportunityInternalId,
+    "type": "OPPORTUNITY"
+} as Object {
+    class : "org.mule.module.netsuite.extension.api.RecordRef"
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<netsuite:delete-record doc:name="Delete test opportunity"
+			doc:id="aa12cef6-8df2-4835-9a0f-0dcc75dd1fd3" config-ref="NetSuite_Config" />
+	</sub-flow>
+	<munit:test name="get:\items:netsuite-api-configTest"
+		description="Test" doc:id="fa9452e7-97cb-4697-8b72-a3cd0f3f61ac">
+		<munit:enable-flow-sources>
+			<munit:enable-flow-source value="netsuite-api-main" />
+			<munit:enable-flow-source value="get:\items:netsuite-api-config" />
+		</munit:enable-flow-sources>
+		<munit:behavior>
+			<ee:transform doc:name="Set netsuiteSearchMock var"
+				doc:id="2cca2d9d-8786-4960-974b-13762c0a8445">
+				<ee:message>
+				</ee:message>
+				<ee:variables>
+					<ee:set-variable variableName="netsuiteSearchMock"><![CDATA[%dw 2.0
+output application/java
+---
+[
+    {
+        "internalId": "18",
+        "item": {
+            "type": null,
+            "internalId": "721",
+            "externalId": null,
+            "name": "SHT00001"
+        },
+        "location": {
+            "type": null,
+            "internalId": "1",
+            "externalId": null,
+            "name": "02: Boston"
+        },
+        "units": {
+            "type": null,
+            "internalId": "15",
+            "externalId": null,
+            "name": "Square Feet"
+        },
+        "subsidiary": {
+            "type": null,
+            "internalId": "1",
+            "externalId": null,
+            "name": "Honeycomb Mfg."
+        }
+    }
+]]]></ee:set-variable>
+				</ee:variables>
+			</ee:transform>
+			<munit-tools:mock-when doc:name="Mock when netsuite:search"
+				doc:id="64e725de-3d1b-4e86-a158-1cad0a97a53d" processor="netsuite:search">
+				<munit-tools:then-return>
+					<munit-tools:payload value="#[vars.netsuiteSearchMock]" />
+				</munit-tools:then-return>
+			</munit-tools:mock-when>
+		</munit:behavior>
+		<munit:execution>
+			<http:request method="GET"
+				doc:name="Request to /api/items?quantity=1500&amp;operator=GREATER_THAN"
+				doc:id="ed613899-60bd-4654-8c85-a0930951dd12" config-ref="HTTP_Request_configuration"
+				path="/api/items?quantity=1500&amp;operator=GREATER_THAN" />
+		</munit:execution>
+		<munit:validation>
+			<ee:transform doc:name="Transform response"
+				doc:id="8cc417ef-35e2-4214-858e-74337c964ebb">
+				<ee:message>
+					<ee:set-payload><![CDATA[%dw 2.0
+output application/java
+---
+payload[0].item.name]]></ee:set-payload>
+				</ee:message>
+			</ee:transform>
+			<munit-tools:assert-that doc:name='Assert that is equal to "SHT00001"'
+				doc:id="bb07dbe2-7297-4929-90c0-b6f39ed93436" expression="#[payload]"
+				is='#[MunitTools::equalTo("SHT00001")]' />
+		</munit:validation>
+	</munit:test>
+	<munit:test name="get:\customers:netsuite-api-configTest"
+		description="Test" doc:id="59ab2c7c-5e75-479e-b464-97a73797b14f">
+		<munit:enable-flow-sources>
+			<munit:enable-flow-source value="netsuite-api-main" />
+			<munit:enable-flow-source value="get:\customers:netsuite-api-config" />
+		</munit:enable-flow-sources>
+		<munit:execution>
+			<flow-ref doc:name="createTestCustomer" doc:id="f6dd791b-f31f-489f-8f35-26a9c4cb1796"
+				name="createTestCustomer" />
+			<http:request method="GET"
+				doc:name="Request to /api/customers?name=TestLastName" doc:id="ed613899-60bd-4654-8c85-a0930951dd12"
+				config-ref="HTTP_Request_configuration" path="/api/customers?name=TestLastName" />
+		</munit:execution>
+		<munit:validation>
+			<ee:transform doc:name="Transform response"
+				doc:id="8094eae8-0472-4385-8530-3eb7fe407a46">
+				<ee:message>
+					<ee:set-payload><![CDATA[%dw 2.0
+output application/java
+---
+payload[0].lastName]]></ee:set-payload>
+				</ee:message>
+			</ee:transform>
+			<munit-tools:assert-that
+				doc:name="Assert that last name is equal to 'TestLastName'" doc:id="fa747626-9c2f-4336-9a6a-b1fec144f7a5"
+				expression="#[payload]" is="#[MunitTools::equalTo('TestLastName')]" />
+			<flow-ref doc:name="deleteTestCustomer" doc:id="19c439c5-67f6-4721-ab2e-49ad0f53da19"
+				name="deleteTestCustomer" />
+		</munit:validation>
+	</munit:test>
+	<sub-flow name="createTestCustomer" doc:id="2722aa43-07f0-4911-af42-87ade25d0cbc">
+		<ee:transform doc:name="Prepare request with test customer"
+			doc:id="4f573a3e-cd9d-4c8b-bedd-73fa3cefa5ee">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/java
+---
+{
+	lastName: "TestLastName",
+	firstName: "TestFirstName",
+	isPerson: true,
+	companyName: "TestLastName TestFirstName",
+	externalId : "234325",
+	subsidiary: {
+		"type": "SUBSIDIARY",
+		internalId: p('netsuite.customer.subsidiary.internalId')
+	} as Object {class: "org.mule.module.netsuite.extension.api.RecordRef"}
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<netsuite:upsert-record recordType="CUSTOMER"
+			doc:name="Upsert test customer" doc:id="9e0337de-c59a-4a06-84a8-71160edf5bc2"
+			config-ref="NetSuite_Config" />
+		<set-variable value="#[output application/java --- payload.baseRef.internalId]"
+			doc:name="Set testCustomerInternalId variable" doc:id="20aa7314-17c1-44ea-94e2-639aa55db88e"
+			variableName="testCustomerInternalId" mimeType="application/java" />
+	</sub-flow>
+	<sub-flow name="deleteTestCustomer" doc:id="944b1c61-eec8-4157-a695-4aede52f9627">
+		<ee:transform doc:name="Prepare delete test customer request"
+			doc:id="6adfb047-595a-4ac8-8147-a3d0e7fda58a">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/java
+---
+{
+    internalId: vars.testCustomerInternalId,
+    "type": "CUSTOMER"
+} as Object {
+    class : "org.mule.module.netsuite.extension.api.RecordRef"
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<netsuite:delete-record doc:name="Delete test customer"
+			doc:id="aa12cef6-8df2-4835-9a0f-0dcc75dd1fd3" config-ref="NetSuite_Config" />
+	</sub-flow>
+
+</mule>

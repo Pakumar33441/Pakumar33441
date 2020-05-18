@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:mongo="http://www.mulesoft.org/schema/mule/mongo" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:file="http://www.mulesoft.org/schema/mule/file"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/mongo http://www.mulesoft.org/schema/mule/mongo/current/mule-mongo.xsd">
+	<file:config name="File_Config" doc:name="File Config" doc:id="cbe27bd8-6583-4c05-8bc5-89bade4ca823" >
+		<file:connection workingDir="yourPath\src\main\resources" />
+	</file:config>
+	<mongo:config name="MongoDB_Config" doc:name="MongoDB Config" doc:id="cbe8ff72-023b-4343-a891-2abc2b7cbad5" >
+		<mongo:connection username="${database.user}" password="${database.password}" database="${database.name}" />
+	</mongo:config>
+	<flow name="import-csv-into-mongodbFlow" doc:id="f7ceb103-2f4d-4d28-89a0-2d5427d91301" >
+		<scheduler doc:name="Scheduler" doc:id="432d0cc7-14c3-48b1-a819-72c7c47722fc" >
+			<scheduling-strategy >
+				<fixed-frequency frequency="20000"/>
+			</scheduling-strategy>
+		</scheduler>
+		<file:read config-ref="File_Config" path="input.csv" doc:name="Read CSV file" doc:id="663f1e97-9f52-40e6-a4b3-deeaa943cfb3" />
+		<ee:transform doc:name="CSV to Map" doc:id="f13a8b8e-9444-418c-9a81-ee753cd5f630" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload map
+{
+	firstname: $.firstname,
+	surname: $.surname,
+	phone: $.phone,
+	email: $.email	
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="Log objects to save" doc:id="efc027eb-74cf-458b-b514-c9dd134388a5" message="#['Saving objects: ' ++ write(payload, 'application/json', {&quot;indent&quot;: &quot;false&quot;})]"/>
+		<mongo:exists-collection config-ref="MongoDB_Config" doc:name="Test if a collection exists" doc:id="dcb3ccd9-2f6d-42cb-8b1e-0a34781ab2fc" target="collectionExists">
+			<mongo:collection-name ><![CDATA[customers]]></mongo:collection-name>
+		</mongo:exists-collection>
+		<choice doc:name="Choice" doc:id="57ddea5d-ce0f-447f-9a42-e22bf069a48f" >
+			<when expression="#[not vars.collectionExists]" >
+				<mongo:create-collection config-ref="MongoDB_Config" collectionName="customers" doc:name="Create collection" doc:id="86f7f8de-be9e-47cb-b339-3548edfa9608" />
+			</when>
+			<otherwise >
+				<logger level="INFO" doc:name="Log that a collection exists" doc:id="ee9013b8-a588-4bc8-a803-4ad258969493" message="Customer collection already exists."/>
+			</otherwise>
+		</choice>
+		<foreach doc:name="For Each" doc:id="3077bc6a-5688-4545-9497-b734dcebe278" >
+			<mongo:insert-document config-ref="MongoDB_Config" doc:name="Save customers to Mongo" doc:id="98e57ca3-1c51-4b3d-9c26-6dfdc09dd232" collectionName="customers"/>
+			<logger level="INFO" doc:name="Log the customer" doc:id="502531d9-aa94-496b-9a6a-0979d6a14492" message="#['Customer has been stored, ID: ' ++ payload]"/>
+		</foreach>
+	</flow>
+</mule>

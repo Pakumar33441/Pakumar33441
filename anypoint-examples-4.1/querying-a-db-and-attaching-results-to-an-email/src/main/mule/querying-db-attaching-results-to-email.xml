@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:tls="http://www.mulesoft.org/schema/mule/tls"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:db="http://www.mulesoft.org/schema/mule/db"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns:email="http://www.mulesoft.org/schema/mule/email" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/tls http://www.mulesoft.org/schema/mule/tls/current/mule-tls.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/email http://www.mulesoft.org/schema/mule/email/current/mule-email.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="36b3c4d2-8582-44f7-85b5-9f8aa42f930f" >
+		<http:listener-connection host="0.0.0.0" port="${http.port}" />
+	</http:listener-config>
+	<db:config name="Database_Config" doc:name="Database Config" doc:id="59194256-5c2f-49ea-8146-c46fbbf41c61" >
+		<db:my-sql-connection host="${db.host}" port="${db.port}" user="${db.user}" password="${db.password}" database="${db.name}" />
+	</db:config>
+	<email:smtp-config name="Gmail_SMTPS" doc:name="Email SMTP" doc:id="3fe54962-4f4c-4dc7-8aa4-acbad2d10e43" >
+		<email:smtps-connection host="${smtp.host}" port="${smtp.port}" user="${smtp.user}" password="${smtp.password}" tlsContext="TLS_Context" />
+	</email:smtp-config>
+	<tls:context name="TLS_Context" doc:name="TLS Context" doc:id="f2135468-7efa-4e92-a191-eaca88df39f2" >
+		<tls:trust-store insecure="true" />
+	</tls:context>
+	<configuration-properties file="mule-artifact.properties" doc:name="Configuration properties" doc:id="ca514625-7559-4c4d-a352-9acbc3a331dc" />
+
+	<flow name="querying-db-attaching-results-to-emailFlow" doc:id="37ead0b0-c3cb-47fe-b6bd-10cb9f4174aa" >
+		<http:listener config-ref="HTTP_Listener_config" path="/" doc:name="Receive HTTP requests" doc:id="aa83b482-b775-418f-8c28-a287c0cae4c6" allowedMethods="POST"/>
+		<ee:transform doc:name="Split the payload" doc:id="1cce4b82-b79d-4656-959d-9ef08ffbd2b8" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload.root.employees mapObject
+{
+    employee: using (name=$ splitBy / /){
+        firstName: name[0],
+        lastName: name[1]
+    }
+} pluck $]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<set-variable variableName="dbEntries" value="#[[]]" doc:name="Initialize accumulator" doc:id="809cc8cd-4c38-445c-bcfa-1342f3f8a143" />
+		<foreach doc:name="For Each" doc:id="b04d6432-c7de-44df-b93b-7c048b14e4e1" >
+			<db:select config-ref="Database_Config" doc:name="Query database" doc:id="cfef208d-861b-4837-89db-09065ce5fd15">
+				<db:sql >select first_name,last_name,gender,dob,hire_date from employees where first_name = :firstName and last_name = :lastName</db:sql>
+				<db:input-parameters ><![CDATA[#[{'firstName': payload.firstName, 'lastName': payload.lastName}]]]></db:input-parameters>
+			</db:select>
+			<set-variable variableName="dbEntries" value="#[vars.dbEntries ++ payload]" doc:name="Aggregate the result" doc:id="c2397d29-62ee-4278-8d6c-053b428e4c34" />
+		</foreach>
+		<logger level="INFO" doc:name="Log the employees" doc:id="e4fba826-455b-4246-a169-c4899186d8e3" message="#['Employees: ' ++ write(vars.dbEntries, 'application/json', {&quot;indent&quot;: &quot;false&quot;})]"/>
+		<ee:transform doc:name="Map Collection to CSV" doc:id="4279d330-3601-4bc7-a772-69d0896298b6" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/csv header=true
+---
+vars.dbEntries map
+{
+	first_name   : $.first_name,
+  	last_name    : $.last_name,
+  	gender       : $.gender,
+  	dob          : $.dob as Date,
+  	hire_date    : $.hire_date as Date
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<email:send config-ref="Gmail_SMTPS" doc:name="Send report per email" doc:id="d199d35c-97f9-4ac3-ba00-af921d5adcd3" fromAddress="${mail.from}" subject="${mail.subject}">
+			<email:to-addresses >
+				<email:to-address value="${mail.to}" />
+			</email:to-addresses>
+			<email:body contentType="text/plain" >
+				<email:content ><![CDATA[Please find the attached DB extract.]]></email:content>
+			</email:body>
+			<email:attachments ><![CDATA[#[{'employees.csv': payload}]]]></email:attachments>
+		</email:send>
+		<set-payload value="Report has been successfully processed and sent to email." doc:name="Set Response" doc:id="1803d178-5efd-4426-8c8a-b8fa2531f559" mimeType="text/plain"/>
+	</flow>
+</mule>

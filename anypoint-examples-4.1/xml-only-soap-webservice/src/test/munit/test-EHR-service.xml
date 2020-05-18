@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:munit="http://www.mulesoft.org/schema/mule/munit" xmlns:munit-tools="http://www.mulesoft.org/schema/mule/munit-tools"
+    xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+    xsi:schemaLocation="
+		http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+		http://www.mulesoft.org/schema/mule/munit http://www.mulesoft.org/schema/mule/munit/current/mule-munit.xsd
+		http://www.mulesoft.org/schema/mule/munit-tools  http://www.mulesoft.org/schema/mule/munit-tools/current/mule-munit-tools.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd">
+    <munit:config name="test-createEpisode.xml"/>
+	<munit:test name="test-createEpisode" description="Test" doc:id="4eecbdd9-1fbf-4399-af87-0e2e950cb38b">
+        <munit:execution>
+			<ee:transform doc:name="set http request body" doc:id="dbfb446d-98f4-4bc4-a58a-17d5bd379131" >
+				<ee:message >
+					<ee:set-payload ><![CDATA[%dw 2.0
+output application/xml
+---
+"body": {
+	"getPatientResponse": {
+		"Patient": {
+			"patientId" : now() as String
+		}
+	}
+}
+]]></ee:set-payload>
+				</ee:message>
+			</ee:transform>
+			<flow-ref doc:name="call EHRService createEpisode" doc:id="ba8395e0-fee9-4415-94e6-a9a1b6b742bf" name="createEpisode:\EHRService_SOAP_Configuration"/>
+			<ee:transform doc:name="Transform Response body to JSON" doc:id="20c1557b-97f7-4855-ba7e-3ce431eb33de">
+				<ee:message>
+					<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+				</ee:message>
+			</ee:transform>
+			<logger level="INFO" doc:name="Log response" doc:id="ee1f6027-466a-440c-8dd6-4c5205b35978" message="TEST-CREATE-EPISODE: #[output application/json --- payload]" />
+		</munit:execution>
+		<munit:validation >
+			<munit-tools:assert-that doc:name="Assert episode id is not null" doc:id="68d58d19-f47d-4f07-8cb0-f81a17e7ffbb" is="#[MunitTools::notNullValue()]" message='"Episode id is null"' expression="#[payload.createEpisodeResponse.Episode.episodeId]"/>
+		</munit:validation>
+	</munit:test>
+	<munit:test name="test-findEpisodes" description="MUnit Test" doc:id="7ad448f7-19d6-4e68-b6ea-3e9c4f219075" >
+		<munit:execution >
+			<ee:transform doc:name="set http request body" doc:id="077f83da-7d01-4132-af46-5db1fdee9c69" >
+				<ee:message >
+					<ee:set-payload ><![CDATA[%dw 2.0
+output application/xml
+---
+"body": {
+	"getPatientResponse": {
+		"Patient": {
+			"patientId" : now() as String
+		}
+	}
+}
+]]></ee:set-payload>
+				</ee:message>
+			</ee:transform>
+			<flow-ref doc:name="call EHRService findEpisodes" doc:id="4a681e93-0f6a-4cbc-968f-f56fa307681d" name="findEpisodes:\EHRService_SOAP_Configuration"/>
+			<ee:transform doc:name="Transform Response body to JSON" doc:id="17804f9e-1de1-49a8-bc3c-7611b7fe94db">
+				<ee:message>
+					<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+				</ee:message>
+			</ee:transform>
+			<logger level="INFO" doc:name="Log response" doc:id="b07f7c23-3ae8-46f5-850a-85d370fb149d" message="TEST-FIND-EPISODE: #[output application/json --- payload]"/>
+		</munit:execution>
+		<munit:validation >
+			<munit-tools:assert-that doc:name="Assert patient id is not null" doc:id="f496f35a-15b9-401b-883a-b0e87530ef3e" expression="#[payload.findEpisodesResponse.Episode.PatientId]" is="#[MunitTools::notNullValue()]" message='"PatientId is null"'/>
+		</munit:validation>
+	</munit:test>
+
+
+</mule>

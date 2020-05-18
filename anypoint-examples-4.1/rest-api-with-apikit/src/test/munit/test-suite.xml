@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:munit="http://www.mulesoft.org/schema/mule/munit" xmlns:munit-tools="http://www.mulesoft.org/schema/mule/munit-tools" xmlns="http://www.mulesoft.org/schema/mule/core"
+    xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+    xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+        http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+        http://www.mulesoft.org/schema/mule/munit http://www.mulesoft.org/schema/mule/munit/current/mule-munit.xsd
+        http://www.mulesoft.org/schema/mule/munit-tools  http://www.mulesoft.org/schema/mule/munit-tools/current/mule-munit-tools.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+    <munit:config name="test-suite.xml" />
+    <http:request-config name="HTTP_Request_configuration" doc:name="HTTP Request configuration" doc:id="3cfb1b75-5d2c-48b1-89c7-40bbfbe118c0">
+        <http:request-connection host="localhost" port="${http.port}" />
+    </http:request-config>
+    <munit:test name="test-suite-customers-mainTest" description="Test" doc:id="bce45cbf-5843-4d10-8d2a-35b86b6f9030">
+        <munit:enable-flow-sources>
+            <munit:enable-flow-source value="customers-main" />
+            <munit:enable-flow-source value="get:\customers:customers-config" />
+        </munit:enable-flow-sources>
+        <munit:execution>
+            <http:request method="GET" doc:name="Request" doc:id="19bd71d1-12c5-4522-b0d7-8b39350136de" config-ref="HTTP_Request_configuration"
+                path="/api/customers" />
+        </munit:execution>
+        <munit:validation>
+            <munit-tools:assert-that doc:name="Assert response status" doc:id="052ed2ff-e0ab-42ad-b563-7f2975911046"
+                expression="#[attributes.statusCode]" is="#[MunitTools::equalTo(200)]" message="Incorrect response status!" />
+            <ee:transform doc:name="Transform Message" doc:id="83dd7b8a-3094-49e4-942f-d30f74746f0f">
+                <ee:message>
+                    <ee:set-payload><![CDATA[%dw 2.0
+output application/java
+---
+payload]]></ee:set-payload>
+                </ee:message>
+            </ee:transform>
+            <munit-tools:assert-that doc:name="Assert response body" doc:id="a82603ac-956b-49d3-93bf-fc2b43e8df88"
+                expression="#[write(payload, 'application/json', {'indent': false})]"
+                is="#[MunitTools::equalTo('[{&quot;firstName&quot;: &quot;John&quot;,&quot;lastName&quot;: &quot;Doe&quot;,&quot;phone&quot;: &quot;123456789&quot;,&quot;email&quot;: &quot;john.doe@email.com&quot;},{&quot;firstName&quot;: &quot;Jane&quot;,&quot;lastName&quot;: &quot;Doe&quot;,&quot;phone&quot;: &quot;123456789&quot;,&quot;email&quot;: &quot;jane.doe@email.com&quot;}]')]"
+                message="Incorrect response body!" />
+        </munit:validation>
+    </munit:test>
+    <munit:test name="test-suite-put:\customers\(customerId):application\json:customers-configTest" description="Test"
+        doc:id="1e2c9006-0772-4c03-bab2-804fa0ada2d0">
+        <munit:enable-flow-sources>
+            <munit:enable-flow-source value="customers-main" />
+            <munit:enable-flow-source value="put:\customers\(customerId):application\json:customers-config" />
+        </munit:enable-flow-sources>
+        <munit:execution>
+            <http:request method="PUT" doc:name="Request" doc:id="1facf600-781c-4fa2-a09c-00a2749b25cb" config-ref="HTTP_Request_configuration"
+                path="/api/customers/123456ABC">
+                <http:body><![CDATA[{
+    "firstName": "John",
+    "lastName": "Doe",
+    "phone": "123456789",
+    "email": "john.doe@email.com"
+}]]></http:body>
+                <http:headers><![CDATA[#[output applicaton/java
+---
+{
+    "Content-Type" : "application/json"
+}]]]></http:headers>
+            </http:request>
+        </munit:execution>
+        <munit:validation>
+            <munit-tools:assert-that doc:name="Assert response status" doc:id="052ed2ff-e0ab-42ad-b563-7f2975911046"
+                expression="#[attributes.statusCode]" is="#[MunitTools::equalTo(200)]" message="Incorrect response status!" />
+            <ee:transform doc:name="Transform Message" doc:id="83dd7b8a-3094-49e4-942f-d30f74746f0f">
+                <ee:message>
+                    <ee:set-payload><![CDATA[%dw 2.0
+output application/java
+---
+payload]]></ee:set-payload>
+                </ee:message>
+            </ee:transform>
+            <munit-tools:assert-that doc:name="Assert response body" doc:id="a82603ac-956b-49d3-93bf-fc2b43e8df88"
+                expression="#[write(payload, 'application/json', {'indent': false})]" is="#[MunitTools::equalTo('{&quot;message&quot;: &quot;successfully updated!&quot;}')]"
+                message="Incorrect response body!" />
+        </munit:validation>
+    </munit:test>
+    <munit:test name="test-suite-get:\customers\(customerId):customers-configTest" description="Test" doc:id="7e00bf84-7715-46c2-8052-070e60ce9e17">
+        <munit:enable-flow-sources>
+            <munit:enable-flow-source value="customers-main" />
+            <munit:enable-flow-source value="get:\customers\(customerId):customers-config" />
+        </munit:enable-flow-sources>
+        <munit:execution>
+            <http:request method="GET" doc:name="Request" doc:id="26c253b0-eaf3-49fe-92a1-9e44af00977d" config-ref="HTTP_Request_configuration"
+                path="/api/customers/123456ABC" />
+        </munit:execution>
+        <munit:validation>
+            <munit-tools:assert-that doc:name="Assert response status" doc:id="052ed2ff-e0ab-42ad-b563-7f2975911046"
+                expression="#[attributes.statusCode]" is="#[MunitTools::equalTo(200)]" message="Incorrect response status!" />
+            <ee:transform doc:name="Transform Message" doc:id="83dd7b8a-3094-49e4-942f-d30f74746f0f">
+                <ee:message>
+                    <ee:set-payload><![CDATA[%dw 2.0
+output application/java
+---
+payload]]></ee:set-payload>
+                </ee:message>
+            </ee:transform>
+            <munit-tools:assert-that doc:name="Assert response body" doc:id="a82603ac-956b-49d3-93bf-fc2b43e8df88"
+                expression="#[write(payload, 'application/json', {'indent': false})]"
+                is="#[MunitTools::equalTo('{&quot;firstName&quot;: &quot;John&quot;,&quot;lastName&quot;: &quot;Doe&quot;,&quot;phone&quot;: &quot;123456789&quot;,&quot;email&quot;: &quot;john.doe@email.com&quot;}')]"
+                message="Incorrect response body!" />
+        </munit:validation>
+    </munit:test>
+    <munit:test name="test-suite-get:\customers:customers-configTest" description="Test" doc:id="bce45cbf-5843-4d10-8d2a-35b86b6f9030">
+        <munit:enable-flow-sources>
+            <munit:enable-flow-source value="customers-main" />
+            <munit:enable-flow-source value="get:\customers:customers-config" />
+        </munit:enable-flow-sources>
+        <munit:execution>
+            <http:request method="GET" doc:name="Request" doc:id="19bd71d1-12c5-4522-b0d7-8b39350136de" config-ref="HTTP_Request_configuration"
+                path="/api/customers" />
+        </munit:execution>
+        <munit:validation>
+            <munit-tools:assert-that doc:name="Assert response status" doc:id="052ed2ff-e0ab-42ad-b563-7f2975911046"
+                expression="#[attributes.statusCode]" is="#[MunitTools::equalTo(200)]" message="Incorrect response status!" />
+            <ee:transform doc:name="Transform Message" doc:id="83dd7b8a-3094-49e4-942f-d30f74746f0f">
+                <ee:message>
+                    <ee:set-payload><![CDATA[%dw 2.0
+output application/java
+---
+payload]]></ee:set-payload>
+                </ee:message>
+            </ee:transform>
+            <munit-tools:assert-that doc:name="Assert response body" doc:id="a82603ac-956b-49d3-93bf-fc2b43e8df88"
+                expression="#[write(payload, 'application/json', {'indent': false})]"
+                is="#[MunitTools::equalTo('[{&quot;firstName&quot;: &quot;John&quot;,&quot;lastName&quot;: &quot;Doe&quot;,&quot;phone&quot;: &quot;123456789&quot;,&quot;email&quot;: &quot;john.doe@email.com&quot;},{&quot;firstName&quot;: &quot;Jane&quot;,&quot;lastName&quot;: &quot;Doe&quot;,&quot;phone&quot;: &quot;123456789&quot;,&quot;email&quot;: &quot;jane.doe@email.com&quot;}]')]"
+                message="Incorrect response body!" />
+        </munit:validation>
+    </munit:test>
+    <munit:test name="test-suite-post:\customers:application\json:customers-configTest" description="Test" doc:id="b7624501-64f5-449c-b046-fddbc8a2a5df">
+        <munit:enable-flow-sources>
+            <munit:enable-flow-source value="customers-main" />
+            <munit:enable-flow-source value="post:\customers:application\json:customers-config" />
+        </munit:enable-flow-sources>
+        <munit:execution>
+            <http:request method="POST" doc:name="Request" doc:id="1279b61c-8a7d-4ffe-bb0d-c68e6507d318" config-ref="HTTP_Request_configuration"
+                path="/api/customers">
+                <http:body><![CDATA[{
+    "firstName": "John",
+    "lastName": "Doe",
+    "phone": "123456789",
+    "email": "john.doe@email.com"
+}]]></http:body>
+                <http:headers><![CDATA[#[output applicaton/java
+---
+{
+    "Content-Type" : "application/json"
+}]]]></http:headers>
+            </http:request>
+        </munit:execution>
+        <munit:validation>
+            <munit-tools:assert-that doc:name="Assert response status" doc:id="052ed2ff-e0ab-42ad-b563-7f2975911046"
+                expression="#[attributes.statusCode]" is="#[MunitTools::equalTo(200)]" message="Incorrect response status!" />
+            <ee:transform doc:name="Transform Message" doc:id="83dd7b8a-3094-49e4-942f-d30f74746f0f">
+                <ee:message>
+                    <ee:set-payload><![CDATA[%dw 2.0
+output application/java
+---
+payload]]></ee:set-payload>
+                </ee:message>
+            </ee:transform>
+            <munit-tools:assert-that doc:name="Assert response body" doc:id="a82603ac-956b-49d3-93bf-fc2b43e8df88"
+                expression="#[write(payload, 'application/json', {'indent': false})]" is="#[MunitTools::equalTo('{&quot;message&quot;: &quot;successfully created!&quot;}')]"
+                message="Incorrect response body!" />
+        </munit:validation>
+    </munit:test>
+</mule>

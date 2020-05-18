@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:munit="http://www.mulesoft.org/schema/mule/munit" xmlns:munit-tools="http://www.mulesoft.org/schema/mule/munit-tools"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xsi:schemaLocation="
+		http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+		http://www.mulesoft.org/schema/mule/munit http://www.mulesoft.org/schema/mule/munit/current/mule-munit.xsd
+		http://www.mulesoft.org/schema/mule/munit-tools  http://www.mulesoft.org/schema/mule/munit-tools/current/mule-munit-tools.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<munit:config name="test-suite.xml" />
+	<http:request-config name="HTTP_Request_configuration" doc:name="HTTP Request configuration" doc:id="3cfb1b75-5d2c-48b1-89c7-40bbfbe118c0" >
+		<http:request-connection host="localhost" port="${http.port}" />
+	</http:request-config>
+	<munit:test name="test-suite-scatter-gather-flow-controlFlowTest" description="Test" doc:id="2fa5a8f6-28d8-430b-804c-0ddc0c07117b" >
+		<munit:enable-flow-sources>
+	        <munit:enable-flow-source value="scatter-gather-flow-controlFlow"/>
+    	</munit:enable-flow-sources>
+		<munit:execution >
+			<http:request method="GET" doc:name="Request" doc:id="4ce19629-39ac-4390-86ac-695b870f0d5a" path="/scatterGather" config-ref="HTTP_Request_configuration"/>
+		</munit:execution>
+		<munit:validation >
+			<ee:transform doc:name="Transform Message" doc:id="37173c56-dff1-45d9-9b45-342c1aecde6b" >
+				<ee:message >
+					<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+payload.aggregated]]></ee:set-payload>
+				</ee:message>
+			</ee:transform>
+			<munit-tools:assert-that doc:name="Assert response status" doc:id="75bb7d0a-abd2-4526-8463-c826bb7507b0" message="Response status is not valid!" expression="#[attributes.statusCode]" is="#[MunitTools::equalTo(200)]"/>
+			<munit-tools:assert-that doc:name="Assert number of contacts in the response" doc:id="edd292fa-8a8c-41e4-817f-a7cda2d91cf1" expression="#[sizeOf(payload)]" is="#[MunitTools::equalTo(10)]" message="Incorect number of contacts in the response!"/>
+			<munit-tools:assert-that doc:name="Assert that surname in the first entry is correct" doc:id="df64f6a4-1444-43d1-9b31-069dccfb9c04" is="#[MunitTools::equalTo('Doe')]" expression="#[payload[0].surname]" message="Surname isn't correct in the first surname!"/>
+			<munit-tools:assert-that doc:name="Assert that surname in 5th entry is correct" doc:id="df64f6a4-1444-43d1-9b31-069dccfb9c04" is="#[MunitTools::equalTo('Joe')]" expression="#[payload[5].surname]" message="Surname isn't correct in the 5th surname!"/>			
+</munit:validation>
+	</munit:test>
+</mule>

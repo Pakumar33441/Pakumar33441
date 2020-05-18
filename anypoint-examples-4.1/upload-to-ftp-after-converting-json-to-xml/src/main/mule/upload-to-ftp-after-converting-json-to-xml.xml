@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:file="http://www.mulesoft.org/schema/mule/file" xmlns:ftp="http://www.mulesoft.org/schema/mule/ftp"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ftp http://www.mulesoft.org/schema/mule/ftp/current/mule-ftp.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="757e8ed8-73ee-47a7-882d-bb0b92a05fe3" >
+		<http:listener-connection host="0.0.0.0" port="${http.port}" />
+	</http:listener-config>
+	<ftp:config name="FTP_Config" doc:name="FTP Config" doc:id="fe858e0d-900b-488c-a2dd-cbb60e466376" >
+		<ftp:connection host="${ftp.host}" username="${ftp.username}" password="${ftp.password}" port="${ftp.port}"/>
+	</ftp:config>
+	<configuration-properties file="mule-artifact.properties" doc:name="Configuration properties" doc:id="3c4c8f5d-0998-4c6a-8e1a-fc72987ff425" />
+	<flow name="upload-to-ftp-after-converting-json-to-xmlFlow" doc:id="d788617e-9725-4184-b48b-f24ecb09ec09" >
+		<http:listener config-ref="HTTP_Listener_config" path="/" doc:name="Receive HTTP Requests" doc:id="19ec3ead-05e1-40ac-bfcb-fc7e99d908f8" outputMimeType="application/json" outputEncoding="UTF-8"/>
+		<ee:transform doc:name="JSON to XML" doc:id="d4fa5c66-27cd-46f8-b3e4-692b8594c7c8" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/xml
+---
+employees: {
+	(payload.employees.employee map {
+		employee: {
+			name: $.name,
+			lastName: $.lastName,
+			addresses: {
+				($.addresses.address map {
+					address: $
+				})
+			}
+		}
+	}
+)
+}
+]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<ftp:write config-ref="FTP_Config" path="/upload/muleExample.xml" doc:name="Upload to FTP" doc:id="a198bd1e-08ed-4130-a100-b358606e4b98" />
+	</flow>
+</mule>

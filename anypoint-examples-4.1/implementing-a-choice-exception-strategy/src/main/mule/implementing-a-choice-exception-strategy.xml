@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:file="http://www.mulesoft.org/schema/mule/file"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="93953157-5907-4893-ac21-85ded3af61ea" >
+		<http:listener-connection host="0.0.0.0" port="${http.port}" />
+	</http:listener-config>
+	<file:config name="File_Config" doc:name="File Config" doc:id="9b81a137-752c-4e1d-a270-c18971ca6f81" >
+		<file:connection workingDir="${file.working.dir}" />
+	</file:config>
+	<configuration-properties doc:name="Configuration properties" doc:id="d5ea1c7b-077b-4f33-b9c1-5d38e1202b90" file="mule-artifact.properties" />
+	<flow name="implementing-a-exception-strategyFlow" doc:id="60640692-470b-495b-abc6-e5c3f6ba558a" >
+		<http:listener config-ref="HTTP_Listener_config" path="/" doc:name="Listener" doc:id="cb0f325d-9f00-4314-9e09-d817e1db077c" >
+			<http:response statusCode="#[vars.httpStatus]" />
+		</http:listener>
+		<try doc:name="Try" doc:id="d415a842-8ea4-4ced-94a1-ff5a55866365" >
+			<file:read config-ref="File_Config" path="#[attributes.queryParams.filePath]" doc:name="Read input.csv" doc:id="52ce1117-9e26-4a6d-999b-583a3584bbbe" outputMimeType="application/csv" outputEncoding="UTF-8"/>
+			<error-handler >
+				<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="048a9e6f-50f3-4df9-abed-5740b79220e6" type="FILE:ILLEGAL_PATH">
+					<ee:transform doc:name="Invalid Path" doc:id="5803c322-3190-4316-ba99-544a981b2c40" >
+						<ee:message >
+							<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	message: "Your path is invalid"
+}]]></ee:set-payload>
+						</ee:message>
+						<ee:variables >
+							<ee:set-variable variableName="httpStatus" ><![CDATA[404]]></ee:set-variable>
+						</ee:variables>
+					</ee:transform>
+					<logger level="INFO" doc:name="Logger" doc:id="fd6c449d-eae8-4030-8825-5394060e3afc" message="#[payload]"/>
+				</on-error-continue>
+				<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="3bec964d-7aec-4ea5-a5ac-1f8b22f933b5" type="FILE:ACCESS_DENIED">
+					<ee:transform doc:name="Access denied" doc:id="6958f07f-8185-4472-9b52-112e26160016" >
+						<ee:message >
+							<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	message: "Access to file denied"
+}]]></ee:set-payload>
+						</ee:message>
+						<ee:variables >
+							<ee:set-variable variableName="httpStatus" ><![CDATA[401]]></ee:set-variable>
+						</ee:variables>
+					</ee:transform>
+					<logger level="INFO" doc:name="Logger" doc:id="d86fc71c-bf75-4cad-bbea-d940dd3000e1" message="#[payload]"/>
+				</on-error-continue>
+			</error-handler>
+		</try>
+		<ee:transform doc:name="Convert csv to json" doc:id="337be56e-1ead-4088-a305-ad1e52801a70" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+</mule>

@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:tracking="http://www.mulesoft.org/schema/mule/ee/tracking"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/tracking http://www.mulesoft.org/schema/mule/ee/tracking/current/mule-tracking-ee.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+    <configuration-properties doc:name="Configuration properties" file="mule-artifact.properties" />
+	<http:listener-config name="HTTP_Listener_config"
+		doc:name="HTTP Listener config" doc:id="0b77d40d-380b-46d9-a1c4-89ff61edb415">
+		<http:listener-connection host="0.0.0.0"
+			port="${http.port}" />
+	</http:listener-config>
+	<flow name="track-a-custom-business-eventFlow" doc:id="2274e867-45cb-44f9-93bc-559bd0cbacb9">
+		<http:listener doc:name="Listener"
+			doc:id="a5d78f75-ef0d-4c57-b8f5-c1bfe6debc1e" config-ref="HTTP_Listener_config"
+			path="/" />
+		<tracking:transaction id="custom-business-event-example-transaction" />
+		<tracking:custom-event event-name="Price"
+			doc:name="Track custom data" doc:id="cf20627f-4691-4d57-ab46-ac2cff7a9e92">
+			<tracking:meta-data key="item name" value='#[payload["item name"]]' />
+			<tracking:meta-data key="item units" value='#[payload["item units"]]' />
+			<tracking:meta-data key="item price per unit"
+				value='#[payload["item price per unit"]]' />
+		</tracking:custom-event>
+		<ee:transform doc:name="Calculate discount"
+			doc:id="e0dd74cf-c49f-4d67-9af1-73a8c8219c35">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+
+var discount = if(payload["item name"] == "shoes") 			0.15 
+else if (payload["item name"] == "jeans" ) 		0.2 
+else if (payload["item name"] == "jackets" ) 	0.3 
+else 0
+
+import mergeWith from dw::core::Objects
+---
+payload mergeWith {"item price per unit" : payload["item price per unit"] * (1 - discount)}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+</mule>

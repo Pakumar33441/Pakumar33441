@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:batch="http://www.mulesoft.org/schema/mule/batch"
+	xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd
+http://www.mulesoft.org/schema/mule/batch http://www.mulesoft.org/schema/mule/batch/current/mule-batch.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd">
+	<db:config name="Database_Config" doc:name="Database Config" doc:id="59194256-5c2f-49ea-8146-c46fbbf41c61" >
+		<db:my-sql-connection host="${db.host}" port="${db.port}" user="${db.user}" password="${db.password}" database="${db.name}" />
+	</db:config>
+	<salesforce:sfdc-config name="Salesforce_Sfdc_config" doc:name="Salesforce Sfdc config" doc:id="97583da0-5499-4f2e-a610-5f6568d7e3c6" >
+		<salesforce:basic-connection username="${sfdc.username}" password="${sfdc.password}" securityToken="${sfdc.securityToken}"/>
+	</salesforce:sfdc-config>
+	<configuration-properties file="mule-artifact.properties" doc:name="Configuration properties" doc:id="ca514625-7559-4c4d-a352-9acbc3a331dc" />
+
+	<flow name="salesforce2mysql-sync-with-batchFlow" doc:id="53a34921-3689-45b4-b11a-704d069ba8c4" >
+		<scheduler doc:name="Trigger sync every 60 seconds" doc:id="24568dee-e237-4b1f-a631-6129687fde13" >
+			<scheduling-strategy >
+				<fixed-frequency frequency="${scheduler.frequency}" timeUnit="SECONDS" startDelay="${scheduler.startDelay}"/>
+			</scheduling-strategy>
+		</scheduler>
+		<salesforce:query config-ref="Salesforce_Sfdc_config" doc:name="Query Salesforce for Contacts" doc:id="5bb8333d-909a-4aba-84f7-59265bde2366" >
+			<salesforce:salesforce-query >SELECT Email,FirstName,LastModifiedDate,LastName FROM Contact WHERE LastModifiedDate &gt; :timestamp </salesforce:salesforce-query>
+			<salesforce:parameters ><![CDATA[#[output application/java
+---
+{
+	"timestamp" : ${sfdc.query.lastModifiedDateLimit}
+}]]]></salesforce:parameters>
+		</salesforce:query>
+		<batch:job jobName="salesforce2mysql-sync-with-batchBatch_Job" doc:id="af98047c-1712-417e-8a7d-538e33df4f72" maxFailedRecords="200">
+			<batch:process-records >
+				<batch:step name="queryExistingContactInDbStep" doc:id="7e5c7ddc-4957-4a49-9820-06ace114fc59" >
+					<db:select config-ref="Database_Config" doc:name="Check existence in Database" doc:id="d4cd4811-7977-47d8-82f5-6201699b0792" target="recordExists" targetValue="#[payload[0]]">
+						<db:sql >SELECT first_name,last_name,email FROM contact WHERE email = :email</db:sql>
+						<db:input-parameters ><![CDATA[#[{'email' : payload.Email}]]]></db:input-parameters>
+					</db:select>
+					<ee:transform doc:name="Transform SFDC fields to DB fields" doc:id="cd758ef7-3f7a-441c-86de-f72778b14942" >
+						<ee:message >
+							<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+{
+	"email" : payload.Email,
+	"first_name" : payload.FirstName,
+	"last_name" : payload.LastName,
+	"last_modified" : payload.LastModifiedDate
+}]]></ee:set-payload>
+						</ee:message>
+					</ee:transform>
+				</batch:step>
+				<batch:step name="insertContactsStep" doc:id="81087ad1-c42b-436b-9269-8c0fb91b9548" acceptExpression="vars.recordExists == null">
+					<db:insert config-ref="Database_Config" doc:name="Create Contact" doc:id="9c53c69b-8a05-4252-9784-3f09d8c6d0c9" >
+						<db:sql >INSERT INTO contact (first_name, last_name, email) VALUES (:firstName, :lastName, :email)</db:sql>
+						<db:input-parameters ><![CDATA[#[{ 'firstName' : payload.first_name, 'lastName' : payload.last_name, 'email' : payload.email }]]]></db:input-parameters>
+					</db:insert>
+				</batch:step>
+				<batch:step name="updateContactsStep" doc:id="a7566a6b-694f-447c-b621-29be1ac8800e" acceptExpression="vars.recordExists != null">
+					<db:update config-ref="Database_Config" doc:name="Update Contact" doc:id="7b93448d-3db4-4df2-b973-b9ecb017d479" >
+						<db:sql >UPDATE contact SET first_name= :firstName, last_name = :lastName WHERE email = :email</db:sql>
+						<db:input-parameters ><![CDATA[#[{ 'firstName' : payload.first_name, 'lastName' : payload.last_name, 'email' : payload.email }]]]></db:input-parameters>
+					</db:update>
+				</batch:step>
+			</batch:process-records>
+			<batch:on-complete >
+				<logger level="INFO" doc:name="Log completion" doc:id="94c1b778-dead-41dd-a3ca-5f29e034af37" message="Batch job SFDC -&gt; MySQL has been completed."/>
+			</batch:on-complete>
+		</batch:job>
+	</flow>
+</mule>

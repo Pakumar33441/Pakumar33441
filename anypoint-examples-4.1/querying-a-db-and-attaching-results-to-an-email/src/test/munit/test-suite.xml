@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:munit="http://www.mulesoft.org/schema/mule/munit"
+	xmlns:munit-tools="http://www.mulesoft.org/schema/mule/munit-tools" xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+		http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+		http://www.mulesoft.org/schema/mule/munit http://www.mulesoft.org/schema/mule/munit/current/mule-munit.xsd
+		http://www.mulesoft.org/schema/mule/munit-tools  http://www.mulesoft.org/schema/mule/munit-tools/current/mule-munit-tools.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<munit:config name="test-suite.xml" />
+	<http:request-config name="HTTP_Request_configuration" doc:name="HTTP Request configuration" doc:id="3cfb1b75-5d2c-48b1-89c7-40bbfbe118c0" >
+		<http:request-connection host="localhost" port="${http.port}" />
+	</http:request-config>
+	<munit:test name="test-suite-querying-db-attaching-results-to-emailFlowTest" description="Test" doc:id="93bbfcec-2e81-4d37-875d-8d4323172474" >
+		<munit:enable-flow-sources>
+	        <munit:enable-flow-source value="querying-db-attaching-results-to-emailFlow"/>
+    	</munit:enable-flow-sources>
+		<munit:behavior >
+			<munit-tools:mock-when doc:name="Mock when" doc:id="682c115e-5b84-4db1-885c-1bac580da1b0" processor="email:send"/>
+			<munit-tools:spy doc:name="Spy" doc:id="f382d3ca-3bd8-4683-b329-e8265e336b8e" processor="set-payload">
+				<munit-tools:before-call >
+					<ee:transform doc:name="Transform Message" doc:id="09dafbc9-af2f-4249-9328-44ff15d4bea2" >
+						<ee:message >
+							<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+payload]]></ee:set-payload>
+						</ee:message>
+					</ee:transform>
+					<munit-tools:assert-that doc:name="Assert number of entries" doc:id="ad571d35-4e2b-4b6e-998a-88901063b0b3" expression="#[sizeOf(payload)]" is="#[MunitTools::equalTo(3)]" message="Incorrect number of entries in payload before set-payload component!" />
+					<munit-tools:assert-that doc:name="Assert payload to be send per email" doc:id="b43ea5ff-9d00-4058-8e35-b51ae71d976e" expression="#[write(payload, 'application/json', {'indent': false})]" is="#[MunitTools::equalTo('[{&quot;first_name&quot;: &quot;Chava&quot;,&quot;last_name&quot;: &quot;Puckett&quot;,&quot;gender&quot;: &quot;F&quot;,&quot;dob&quot;: &quot;1985-09-02&quot;,&quot;hire_date&quot;: &quot;2008-10-12&quot;},{&quot;first_name&quot;: &quot;Quentin&quot;,&quot;last_name&quot;: &quot;Puckett&quot;,&quot;gender&quot;: &quot;F&quot;,&quot;dob&quot;: &quot;1971-10-21&quot;,&quot;hire_date&quot;: &quot;2008-09-15&quot;},{&quot;first_name&quot;: &quot;Mona&quot;,&quot;last_name&quot;: &quot;Sosa&quot;,&quot;gender&quot;: &quot;M&quot;,&quot;dob&quot;: &quot;1950-09-26&quot;,&quot;hire_date&quot;: &quot;2007-11-27&quot;}]')]"/>
+				</munit-tools:before-call>
+				<munit-tools:after-call >
+					<munit-tools:assert-that doc:name="Assert payload after set-payload component" doc:id="dea9c48f-5973-4c37-a30b-0a0b41659817" expression="#[payload]" is="#[MunitTools::equalTo('Report has been successfully processed and sent to email.')]" message="Incorrect payload after set-payload component!" />
+				</munit-tools:after-call>
+			</munit-tools:spy>
+		</munit:behavior>
+		<munit:execution >
+			<http:request method="POST" doc:name="Request" doc:id="4ce19629-39ac-4390-86ac-695b870f0d5a" path="/" config-ref="HTTP_Request_configuration">
+				<http:body ><![CDATA[<root>
+	<employees>
+		<employee>Chava Puckett</employee>
+		<employee>Quentin Puckett</employee>
+		<employee>Mona Sosa</employee>
+	</employees>
+</root>]]></http:body>
+				<http:headers ><![CDATA[#[output applicaton/java
+---
+{
+	"Content-type" : "application/xml"
+}]]]></http:headers>
+			</http:request>
+		</munit:execution>
+		<munit:validation >
+			<ee:transform doc:name="Transform Message" doc:id="6b970d8b-5b38-4e69-abea-9925c9149df3" >
+				<ee:message >
+					<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+payload]]></ee:set-payload>
+				</ee:message>
+			</ee:transform>
+			<munit-tools:assert-that doc:name="Assert response status" doc:id="75bb7d0a-abd2-4526-8463-c826bb7507b0" message="Response status is not valid!" expression="#[attributes.statusCode]" is="#[MunitTools::equalTo(200)]"/>
+			<munit-tools:assert-that doc:name="Assert response body" doc:id="edd292fa-8a8c-41e4-817f-a7cda2d91cf1" expression="#[payload]" is="#[MunitTools::equalTo('Report has been successfully processed and sent to email.')]" message="Incorrect response body!"/>
+		</munit:validation>
+	</munit:test>
+</mule>

@@ -1,0 +1,19 @@
+{
+  "configs": [
+    "importing-an-email-attachment-using-the-imap-connector.xml"
+  ],
+  "redeploymentEnabled": true,
+  "name": "importing-an-email-attachment-using-the-imap-connector",
+  "minMuleVersion": "4.1.1",
+  "requiredProduct": "MULE_EE",
+  "classLoaderModelLoaderDescriptor": {
+    "id": "mule",
+    "attributes": {
+      "exportedResources": []
+    }
+  },
+  "bundleDescriptorLoader": {
+    "id": "mule",
+    "attributes": {}
+  }
+}

@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<wsdl:definitions name="IFulfillmentService" targetNamespace="http://ordermgmt.org/" xmlns:ns1="http://schemas.xmlsoap.org/soap/http" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:tns="http://ordermgmt.org/" xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <wsdl:types>
+    <xs:schema elementFormDefault="unqualified" targetNamespace="http://ordermgmt.org/" version="1.0" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+      <xs:element name="address" type="tns:address"/>
+      <xs:element name="order" type="tns:order"/>
+      <xs:element name="orderItem" type="tns:orderItem"/>
+      <xs:element name="putShippingOrder" type="tns:putShippingOrder"/>
+      <xs:element name="putShippingOrderResponse" type="tns:putShippingOrderResponse"/>
+      <xs:element name="shippingOrder" type="tns:shippingOrder"/>
+      <xs:element name="shippingOrderConfirmation" type="tns:shippingOrderConfirmation"/>
+      <xs:complexType name="putShippingOrder">
+        <xs:sequence>
+          <xs:element minOccurs="0" name="shippingId" type="xs:string"/>
+          <xs:element minOccurs="0" name="billingAddress" type="tns:address"/>
+          <xs:element minOccurs="0" name="shippingAddress" type="tns:address"/>
+          <xs:element minOccurs="0" name="order" type="tns:order"/>
+        </xs:sequence>
+      </xs:complexType>
+      <xs:complexType name="address">
+        <xs:sequence>
+          <xs:element minOccurs="0" name="name" type="xs:string"/>
+          <xs:element minOccurs="0" name="line1" type="xs:string"/>
+          <xs:element minOccurs="0" name="line2" type="xs:string"/>
+          <xs:element minOccurs="0" name="city" type="xs:string"/>
+          <xs:element minOccurs="0" name="stateOrProvinceCode" type="xs:string"/>
+          <xs:element minOccurs="0" name="countryCode" type="xs:string"/>
+          <xs:element minOccurs="0" name="postalCode" type="xs:string"/>
+        </xs:sequence>
+      </xs:complexType>
+      <xs:complexType name="order">
+        <xs:sequence>
+          <xs:element maxOccurs="unbounded" minOccurs="0" name="orderItem" type="tns:orderItem"/>
+        </xs:sequence>
+      </xs:complexType>
+      <xs:complexType name="orderItem">
+        <xs:sequence>
+          <xs:element minOccurs="0" name="merchantSKU" type="xs:string"/>
+          <xs:element name="quantity" type="xs:int"/>
+          <xs:element name="price" type="xs:double"/>
+        </xs:sequence>
+      </xs:complexType>
+      <xs:complexType name="putShippingOrderResponse">
+        <xs:sequence>
+          <xs:element minOccurs="0" name="ShippingOrderConfirmation" type="tns:shippingOrderConfirmation"/>
+        </xs:sequence>
+      </xs:complexType>
+      <xs:complexType name="shippingOrderConfirmation">
+        <xs:sequence>
+          <xs:element minOccurs="0" name="shippingOrder" type="tns:shippingOrder"/>
+          <xs:element name="orderReceivedStatus" type="xs:boolean"/>
+        </xs:sequence>
+      </xs:complexType>
+      <xs:complexType name="shippingOrder">
+        <xs:sequence>
+          <xs:element minOccurs="0" name="shippingId" type="xs:string"/>
+          <xs:element minOccurs="0" name="billingAddress" type="tns:address"/>
+          <xs:element minOccurs="0" name="shippingAddress" type="tns:address"/>
+          <xs:element minOccurs="0" name="order" type="tns:order"/>
+        </xs:sequence>
+      </xs:complexType>
+    </xs:schema>
+  </wsdl:types>
+  <wsdl:message name="putShippingOrderResponse">
+    <wsdl:part element="tns:putShippingOrderResponse" name="parameters"/>
+  </wsdl:message>
+  <wsdl:message name="putShippingOrder">
+    <wsdl:part element="tns:putShippingOrder" name="parameters"/>
+  </wsdl:message>
+  <wsdl:portType name="IFulfillment">
+    <wsdl:operation name="putShippingOrder">
+      <wsdl:input message="tns:putShippingOrder" name="putShippingOrder"/>
+      <wsdl:output message="tns:putShippingOrderResponse" name="putShippingOrderResponse"/>
+    </wsdl:operation>
+  </wsdl:portType>
+  <wsdl:binding name="IFulfillmentServiceSoapBinding" type="tns:IFulfillment">
+    <soap:binding style="document" transport="http://schemas.xmlsoap.org/soap/http"/>
+    <wsdl:operation name="putShippingOrder">
+      <soap:operation soapAction="" style="document"/>
+      <wsdl:input name="putShippingOrder">
+        <soap:body use="literal"/>
+      </wsdl:input>
+      <wsdl:output name="putShippingOrderResponse">
+        <soap:body use="literal"/>
+      </wsdl:output>
+    </wsdl:operation>
+  </wsdl:binding>
+  <wsdl:service name="IFulfillmentService">
+    <wsdl:port binding="tns:IFulfillmentServiceSoapBinding" name="IFulfillmentPort">
+      <soap:address location="http://localhost:1080/OrderFulfillment"/>
+    </wsdl:port>
+  </wsdl:service>
+</wsdl:definitions>

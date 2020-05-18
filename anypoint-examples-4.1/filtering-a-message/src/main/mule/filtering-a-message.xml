@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule
+	xmlns:validation="http://www.mulesoft.org/schema/mule/validation"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/validation http://www.mulesoft.org/schema/mule/validation/current/mule-validation.xsd">
+	<http:listener-config name="HTTP_Listener_config"
+		doc:name="HTTP Listener config" doc:id="92d80d89-8dd5-4736-be63-df4f232d9b7e">
+		<http:listener-connection host="0.0.0.0"
+			port="8081" />
+	</http:listener-config>
+	<flow name="filtering-a-messageFlow" doc:id="f9ecef61-b653-410b-a573-aa60fd2939b4">
+		<http:listener doc:name="Listener"
+			doc:id="920e039e-5868-4913-8932-fe84d217848b" config-ref="HTTP_Listener_config"
+			path="/" />
+		<validation:is-not-empty-collection
+			doc:name="Validate if payload is not empty collection" doc:id="63122eeb-0965-449a-af90-822d174ec630"
+			message="Payload is empty collection! We are expecting 1 record at least!" />
+		<foreach doc:name="For Each" doc:id="29388658-b2fd-4003-9948-0517da456400"
+			collection="payload">
+			<validation:is-not-null doc:name="Validate if record contains identifier"
+				doc:id="f52573bc-7388-4bc9-a976-5ccf5ea34b00" value="#[payload.identifier]"
+				message='#["Record: " ++ write(payload, "application/json") ++ " does not contain id field!"]' />
+			<validation:is-not-null doc:name="Validate if record contains email"
+				doc:id="061c415b-6d1c-4984-a440-4bff027fea75" value="#[payload.email]"
+				message='#["Record: " ++ write(payload, "application/json") ++ " does not contain email!"]' />
+			<validation:is-email doc:name="Validate email format"
+				doc:id="ef3eeace-a4a0-47ce-8ea9-41312109d55e" email="#[payload.email]"
+				message='#["Email in record: " ++ write(payload, "application/json") ++ " is not valid!"]' />
+			<validation:is-not-null doc:name="Validate if record contains connection info"
+				doc:id="c284bb97-c009-42ef-9e05-6f71e5f49c6d" value="#[payload.connectionInfo]"
+				message='#["Record: " ++ write(payload, "application/json") ++ " does not contain conection info!"]' />
+			<validation:is-not-blacklisted-ip
+				doc:name="Validate if IP address is not on blacklist" doc:id="6b29726a-278f-4558-af72-65e04ddf9de9"
+				ipAddress="#[payload.connectionInfo.IPAddress]"
+				message='#["IP address of record: " ++ write(payload, "application/json") ++ " is on blacklist!"]'>
+				<validation:black-list ips='#[["40.125.118.175"]]'>
+				</validation:black-list>
+			</validation:is-not-blacklisted-ip>
+		</foreach>
+		<set-payload value='#[output text/plain --- "User records are valid!"]'
+			doc:name="Prepare response" doc:id="51f6dd3c-cdf2-4468-8a9e-db46259bb2e1"
+			mimeType="text/plain" />
+	</flow>
+</mule>

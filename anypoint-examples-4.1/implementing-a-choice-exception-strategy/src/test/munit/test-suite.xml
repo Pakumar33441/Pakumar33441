@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:munit="http://www.mulesoft.org/schema/mule/munit"
+	xmlns:munit-tools="http://www.mulesoft.org/schema/mule/munit-tools"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xsi:schemaLocation="
+		http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+		http://www.mulesoft.org/schema/mule/munit http://www.mulesoft.org/schema/mule/munit/current/mule-munit.xsd
+		http://www.mulesoft.org/schema/mule/munit-tools  http://www.mulesoft.org/schema/mule/munit-tools/current/mule-munit-tools.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<munit:config name="test-suite.xml" />
+	<http:request-config name="HTTP_Request_configuration"
+		doc:name="HTTP Request configuration" doc:id="eed991c6-9e98-4f4e-aaf9-10931a107e11">
+		<http:request-connection host="0.0.0.0" port="${http.port}" />
+	</http:request-config>
+	<configuration-properties doc:name="Configuration properties"
+		doc:id="21e648df-b45a-4bd6-bf8a-2ded0f37ee9b" file="test.properties" />
+	<munit:test name="implementing-a-exception-strategyFlowTest"
+		description="Test" doc:id="8c21ef5b-2c17-4a8c-9248-6b3c3c727962">
+		<munit:enable-flow-sources>
+			<munit:enable-flow-source value="implementing-a-exception-strategyFlow" />
+		</munit:enable-flow-sources>
+		<munit:execution>
+			<http:request method="GET" doc:name="Request"
+				doc:id="0536b7f0-ef59-4ffd-aca0-21c8cbc28a2a" path='/'
+				config-ref="HTTP_Request_configuration">
+				<http:query-params><![CDATA[#[output application/java
+---
+{
+	"filePath" : p('file.input.path')
+}]]]></http:query-params>
+			</http:request>
+			<ee:transform doc:name="Transform response" doc:id="5a10e1ac-1ef2-438b-8806-ce7970dd7e5d">
+				<ee:message>
+					<ee:set-payload><![CDATA[%dw 2.0
+output application/java
+---
+payload]]></ee:set-payload>
+				</ee:message>
+				<ee:variables>
+					<ee:set-variable variableName="expectedResult"><![CDATA[%dw 2.0
+output application/java
+---
+[
+    {
+        "orderId": "1",
+        "name": "T-shirt",
+        "pricePerUnit": "25.0",
+        "units": "2"
+    },
+    {
+        "orderId": "2",
+        "name": "Jacket",
+        "pricePerUnit": "40.5",
+        "units": "3"
+    }
+]]]></ee:set-variable>
+				</ee:variables>
+			</ee:transform>
+		</munit:execution>
+		<munit:validation>
+			<munit-tools:assert-that
+				doc:name='Assert that response is equal to expected one' doc:id="f8b3dd47-c439-456a-86e1-424d45bb2f71"
+				expression="#[payload]" is="#[MunitTools::equalTo(vars.expectedResult)]" />
+		</munit:validation>
+	</munit:test>
+	<munit:test
+		name="implementing-a-exception-strategyFlowWithInvalidPathTest"
+		description="Test" doc:id="8c21ef5b-2c17-4a8c-9248-6b3c3c727962">
+		<munit:enable-flow-sources>
+			<munit:enable-flow-source value="implementing-a-exception-strategyFlow" />
+		</munit:enable-flow-sources>
+		<munit:execution>
+			<try doc:name="Try" doc:id="25460a50-bf89-478b-9523-1080bb6d1648">
+				<http:request method="GET" doc:name="Request"
+					doc:id="0536b7f0-ef59-4ffd-aca0-21c8cbc28a2a" config-ref="HTTP_Request_configuration"
+					path="/?filePath=invalid">
+				</http:request>
+				<error-handler>
+					<on-error-continue enableNotifications="true"
+						logException="true" doc:name="On Error Continue"
+						doc:id="4ad52c41-f44e-4968-8b76-63b0fc8f741f">
+						<munit-tools:assert-that doc:name='Assert that request failed "not found (404)"' doc:id="f8b3dd47-c439-456a-86e1-424d45bb2f71" expression="#[error.description]" is='#[MunitTools::containsString("not found (404)")]' />
+					</on-error-continue>
+				</error-handler>
+			</try>
+		</munit:execution>
+	</munit:test>
+	<munit:test
+		name="implementing-a-exception-strategyFlowNoReadAccessTest"
+		description="Test" doc:id="8c21ef5b-2c17-4a8c-9248-6b3c3c727962">
+		<munit:enable-flow-sources>
+			<munit:enable-flow-source value="implementing-a-exception-strategyFlow" />
+		</munit:enable-flow-sources>
+		<munit:execution>
+			<try doc:name="Try" doc:id="25460a50-bf89-478b-9523-1080bb6d1648" >
+				<http:request method="GET" doc:name="Request" doc:id="0536b7f0-ef59-4ffd-aca0-21c8cbc28a2a" config-ref="HTTP_Request_configuration" path="/" >
+					<http:query-params ><![CDATA[#[output application/java
+---
+{
+	"filePath" : p('file.noReadAccessInput.path')
+}]]]></http:query-params>
+				</http:request>
+				<error-handler >
+					<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="4ad52c41-f44e-4968-8b76-63b0fc8f741f" >
+						<munit-tools:assert-that doc:name='Assert that request failed with "unauthorized (401)"' doc:id="f8b3dd47-c439-456a-86e1-424d45bb2f71" expression="#[error.description]" is='#[MunitTools::containsString("unauthorized (401)")]' />
+					</on-error-continue>
+				</error-handler>
+			</try>
+		</munit:execution>
+	</munit:test>
+</mule>

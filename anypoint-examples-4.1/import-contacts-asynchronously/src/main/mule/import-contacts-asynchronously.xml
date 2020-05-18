@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:os="http://www.mulesoft.org/schema/mule/os"
+	xmlns:scripting="http://www.mulesoft.org/schema/mule/scripting" xmlns:file="http://www.mulesoft.org/schema/mule/file"
+	xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd
+http://www.mulesoft.org/schema/mule/scripting http://www.mulesoft.org/schema/mule/scripting/current/mule-scripting.xsd
+http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="a249d03d-b9e2-4b5f-a2e2-baf5f9f70f00" >
+		<http:listener-connection port="${http.port}" host="0.0.0.0"/>
+	</http:listener-config>
+	<salesforce:sfdc-config name="Salesforce_Sfdc_config" doc:name="Salesforce Sfdc config" doc:id="eed43e9c-2d4d-45f8-9ac9-2cb5d31a9cee" >
+		<salesforce:basic-connection username="${sfdc.user}" password="${sfdc.password}" securityToken="${sfdc.securityToken}" />
+	</salesforce:sfdc-config>
+	<configuration-properties doc:name="Configuration properties" doc:id="6cf432c1-4eac-4572-96f9-612c8aaa0f49" file="mule-artifact.properties" />
+	<file:config name="File_Config" doc:name="File Config" doc:id="777b1f3d-d5b9-416b-8158-641ffe815efc" >
+		<file:connection workingDir="src\main\resources" />
+	</file:config>
+	<os:object-store name="Object_store" doc:name="Object store" doc:id="ee0a6457-b1b8-4dc7-9336-3ad326ecdd94" />
+	<flow name="import-trigger" doc:id="1ccede27-29c6-45e1-9f90-dada5a6954cb" >
+		<http:listener doc:name="Listener" doc:id="1ac661df-7735-417e-9d1c-da3824a90bb3" config-ref="HTTP_Listener_config" path="/import/trigger" allowedMethods="POST">
+			<http:response statusCode="#[vars.httpStatus default 201]">
+				<http:headers ><![CDATA[#[output application/java
+---
+{
+	"Location" : vars.locationHeader
+}]]]></http:headers>
+			</http:response>
+		</http:listener>
+		<set-variable value="#[uuid()]" doc:name="Generate process ID" doc:id="8c2077e4-9687-4a1e-b2ee-4c647c7eed12" variableName="processId"/>
+		<async doc:name="Async" doc:id="8e49c739-f6fe-48e8-b559-c92a6b74fba5" >
+			<os:store doc:name="Initialize status" doc:id="bca798e2-7ef1-4333-b324-709c7de76300" key="#[vars.processId]" objectStore="Object_store">
+				<os:value ><![CDATA[IN PROGRESS]]></os:value>
+			</os:store>
+			<file:read config-ref="File_Config" path="contacts.csv" doc:name="Read contacts.csv" doc:id="5c95b634-404b-4837-a0a1-6e5cbc2078aa" />
+		<ee:transform doc:name="Map CSV to Contacts" doc:id="caaba953-a30e-4510-954f-f3ae35ebc623" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+payload map {
+	FirstName: $.firstname,
+ 	LastName : $.surname,
+	Email : $.email,
+	Phone : $.phone
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<salesforce:create config-ref="Salesforce_Sfdc_config" type="Contact" doc:name="Create Salesforce Contact objects" doc:id="249222d8-beab-40e1-a348-ff111dfa20e4" />
+			<logger level="INFO" doc:name="Log the created objects" doc:id="c6afbd06-3fd9-4657-9330-f263cd8ae52e" message="#['Contacts have been created in SFDC: ' ++ write(payload, 'application/json', {'indent': 'false'})]" />
+			<scripting:execute engine="groovy" doc:name="Sleep for 30s to simulate further processing" doc:id="d8179941-bad3-4db5-a710-8962096fa053" >
+				<scripting:code >sleep(30000)</scripting:code>
+			</scripting:execute>
+			<logger level="INFO" doc:name="Log the result" doc:id="8b1659f0-668f-424f-adce-6247adc52485" message="Migration has been completed."/>
+			<os:store doc:name="Update status" doc:id="a1ae7f1f-6138-47cf-b6db-f9c660b2b590" key="#[vars.processId]" objectStore="Object_store">
+				<os:value ><![CDATA[COMPLETED]]></os:value>
+			</os:store>
+		</async>
+		<set-variable variableName="locationHeader" value="#['http://${api.domain}:${http.port}/import/status/' ++ vars.processId]" doc:name="Set Location header" doc:id="c9ba022c-5e45-4dca-a353-e5df91ce3625" />
+		<set-payload value="#['Synchronization triggered at ' ++ now()]" doc:name="Set response message" doc:id="310aab6c-9f3a-48ea-aa52-8f8aa195d99e" mimeType="text/plain"/>
+	</flow>
+	<flow name="get-import-status" doc:id="30368c96-5c22-48a7-af88-f94a1e5ccf70" >
+		<http:listener doc:name="Listener" doc:id="dad0f00f-86b1-4f66-9f37-04d3221ef662" config-ref="HTTP_Listener_config" path="/import/status/{processId}" >
+		    <http:response statusCode="#[vars.httpStatus default 200]">
+			</http:response>
+		</http:listener>
+		<os:contains doc:name="Check the process with given ID exists" doc:id="d212c0f7-802b-41e2-8c83-4435c1ffe7f1" key="#[attributes.uriParams.processId]" objectStore="Object_store" target="processFound"/>
+		<choice doc:name="Choice" doc:id="05cfd11c-70b8-4cb1-98b2-bbace95c318a" >
+			<when expression="vars.processFound" >
+				<os:retrieve doc:name="Retrieve status" doc:id="c0ec8e18-e1da-4dd3-9b03-d468573e64f5" key="#[attributes.uriParams.processId]" objectStore="Object_store">
+		</os:retrieve>
+			</when>
+			<otherwise >
+				<set-variable value="404" doc:name="Set HTTP status to Not Found" doc:id="f20de05f-4b25-4634-820f-8e8f7beffbca" variableName="httpStatus"/>
+				<set-payload value="#['Synchronization process with ID \'' ++ attributes.uriParams.processId ++ '\' not found.']" doc:name="Set error message" doc:id="002bfbe7-e4d8-43e3-bce9-c8298a1fc002" mimeType="text/plain"/>
+			</otherwise>
+		</choice>
+	</flow>
+</mule>

@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:netsuite="http://www.mulesoft.org/schema/mule/netsuite"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/netsuite http://www.mulesoft.org/schema/mule/netsuite/current/mule-netsuite.xsd">
+	<http:listener-config name="HTTP_Listener_config"
+		doc:name="HTTP Listener config" doc:id="939de698-e436-4c65-ad71-d77be3b8e471">
+		<http:listener-connection host="0.0.0.0"
+			port="${http.port}" />
+	</http:listener-config>
+
+	<netsuite:config name="NetSuite_Config" doc:name="NetSuite Config"
+		doc:id="54c21fad-e7e5-409e-9b4a-848d81dae3f7">
+		<netsuite:login-authentication-connection
+			email="${netsuite.email}" password="${netsuite.password}" account="${netsuite.account}"
+			roleId="${netsuite.roleId}" applicationId="${netsuite.appId}"
+			readTimeout="100000" connectionTimeout="100000">
+			<reconnection>
+				<reconnect />
+			</reconnection>
+		</netsuite:login-authentication-connection>
+	</netsuite:config>
+	<configuration-properties doc:name="Configuration properties"
+		doc:id="f9029318-1d68-4235-9150-f82fbbeb29cd" file="mule-artifact.properties" />
+	<flow name="testFlow" doc:id="690e6d4f-dfe2-41ce-ae07-f0ed6edfd44d">
+		<http:listener doc:name="Listener"
+			doc:id="b2153aa9-17da-4a51-9c05-1d93b0de9629" config-ref="HTTP_Listener_config"
+			path="/*" />
+		<choice doc:name="Are query parameters valid?" doc:id="8d5fbb65-7fb2-407b-b092-5c1913a4d313">
+			<when expression="#[attributes.queryParams.lastname != null]">
+				<ee:transform doc:name="Prepare basic Customer search request"
+					doc:id="a3acddc8-9275-40e7-8981-bfdc5cb562c2">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/java
+---
+{
+	lastName: {
+		operator: "CONTAINS",
+		searchValue: attributes.queryParams.lastname
+	} as Object {
+		class : "org.mule.module.netsuite.extension.api.SearchStringField"
+	}
+} as Object {
+	class : "org.mule.module.netsuite.extension.api.CustomerSearchBasic"
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<netsuite:search config-ref="NetSuite_Config"
+					pageSize="10" doc:name="Search Customer" doc:id="39a9e859-f34b-424b-8842-8074389bfde4"
+					key="CUSTOMER_BASIC">
+				</netsuite:search>
+				<ee:transform doc:name="Prepare HTML table of customers"
+					doc:id="18bd79b3-48f1-4296-bea3-3f075d212485">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0 
+output application/xml
+---
+div: if (sizeOf(payload) > 0 ) {
+   ( payload map {
+    line: {
+      tr: {
+        td: $.lastName,
+        td: $.firstName,
+        td: $.email
+      }
+    }
+  }) 
+} else {
+    line: {
+		tr:	{
+			td: 'No customers found'
+		}
+	}
+}
+]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+
+				<parse-template location="index.html"
+					doc:name="Build html with table of customers" doc:id="bebc3dc6-09d2-4abe-a705-b552e9fbc470" />
+			</when>
+			<otherwise>
+				<parse-template doc:name="Build error html"
+					doc:id="bebc3dc6-09d2-4abe-a705-b552e9fbc470" location="error.html" />
+			</otherwise>
+		</choice>
+	</flow>
+</mule>

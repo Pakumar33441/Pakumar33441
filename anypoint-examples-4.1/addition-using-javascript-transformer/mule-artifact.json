@@ -1,0 +1,18 @@
+{
+  "configs": [
+    "addition-using-javascript-transformer.xml"
+  ],
+  "secureProperties": [],
+  "redeploymentEnabled": true,
+  "name": "addition-using-javascript-transformer",
+  "minMuleVersion": "4.1.2",
+  "requiredProduct": "MULE_EE",
+  "classLoaderModelLoaderDescriptor": {
+    "id": "mule",
+    "attributes": {}
+  },
+  "bundleDescriptorLoader": {
+    "id": "mule",
+    "attributes": {}
+  }
+}

@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:munit="http://www.mulesoft.org/schema/mule/munit"
+	xmlns:munit-tools="http://www.mulesoft.org/schema/mule/munit-tools"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xsi:schemaLocation="
+		http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+		http://www.mulesoft.org/schema/mule/munit http://www.mulesoft.org/schema/mule/munit/current/mule-munit.xsd
+		http://www.mulesoft.org/schema/mule/munit-tools  http://www.mulesoft.org/schema/mule/munit-tools/current/mule-munit-tools.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd">
+	<munit:config name="test-suite.xml" />
+	<http:request-config name="HTTP_Request_configuration"
+		doc:name="HTTP Request configuration" doc:id="063235fc-785a-45ef-a223-d78d8f06affa">
+		<http:request-connection host="0.0.0.0" port="${http.port}" />
+	</http:request-config>
+	<munit:test name="track-a-custom-business-eventFlowTest1" description="Test" doc:id="0e1425ad-604f-481b-8fd1-d3ee7b9c5c4d" >
+		<munit:enable-flow-sources>
+			<munit:enable-flow-source value="track-a-custom-business-eventFlow" />
+		</munit:enable-flow-sources>
+		<munit:execution >
+			<ee:transform doc:name="Prepare request - shoes order" doc:id="0b36db14-6b54-407b-a228-19a849e741cb" >
+				<ee:message >
+					<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"email": "john@mulesoft.com",
+	"item name": "shoes",
+	"item units": 2,
+	"item price per unit": 10,
+	"membership": "free"
+}]]></ee:set-payload>
+				</ee:message>
+			</ee:transform>
+			<http:request method="POST" doc:name="Request" doc:id="be659bd8-ce72-4356-9e49-18a314adfd92" config-ref="HTTP_Request_configuration" path="/"/>
+		</munit:execution>
+		<munit:validation >
+			<munit-tools:assert-that doc:name="Assert that price per unit is equal to 8.5" doc:id="6fe2bebb-8ffa-4bfe-86a5-dd1373863398" expression='#[output application/java --- payload["item price per unit"]]' is="#[MunitTools::equalTo(8.5)]"/>
+			<munit-tools:assert-that doc:name="Assert response status" doc:id="e399bb68-26ef-428c-9b68-89ca73bf76b1" expression="#[attributes.statusCode]" is="#[MunitTools::equalTo(200)]" />
+
+		</munit:validation>
+	</munit:test>
+
+	<munit:test name="track-a-custom-business-eventFlowTest2" description="Test" doc:id="0e1425ad-604f-481b-8fd1-d3ee7b9c5c4d" >
+		<munit:enable-flow-sources>
+			<munit:enable-flow-source value="track-a-custom-business-eventFlow" />
+		</munit:enable-flow-sources>
+		<munit:execution >
+			<ee:transform doc:name="Prepare request - jeans order" doc:id="0b36db14-6b54-407b-a228-19a849e741cb" >
+				<ee:message >
+					<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"email": "john@mulesoft.com",
+	"item name": "jeans",
+	"item units": 2,
+	"item price per unit": 10,
+	"membership": "free"
+}]]></ee:set-payload>
+				</ee:message>
+			</ee:transform>
+			<http:request method="POST" doc:name="Request" doc:id="be659bd8-ce72-4356-9e49-18a314adfd92" config-ref="HTTP_Request_configuration" path="/"/>
+		</munit:execution>
+		<munit:validation >
+			<munit-tools:assert-that doc:name="Assert that price per unit is equal to 8" doc:id="6fe2bebb-8ffa-4bfe-86a5-dd1373863398" expression='#[output application/java --- payload["item price per unit"]]' is="#[MunitTools::equalTo(8)]"/>
+			<munit-tools:assert-that doc:name="Assert response status" doc:id="e399bb68-26ef-428c-9b68-89ca73bf76b1" expression="#[attributes.statusCode]" is="#[MunitTools::equalTo(200)]" />
+
+		</munit:validation>
+	</munit:test>
+
+	<munit:test name="track-a-custom-business-eventFlowTest3" description="Test" doc:id="0e1425ad-604f-481b-8fd1-d3ee7b9c5c4d" >
+		<munit:enable-flow-sources>
+			<munit:enable-flow-source value="track-a-custom-business-eventFlow" />
+		</munit:enable-flow-sources>
+		<munit:execution >
+			<ee:transform doc:name="Prepare request - jackets order" doc:id="0b36db14-6b54-407b-a228-19a849e741cb" >
+				<ee:message >
+					<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"email": "john@mulesoft.com",
+	"item name": "jackets",
+	"item units": 2,
+	"item price per unit": 10,
+	"membership": "free"
+}]]></ee:set-payload>
+				</ee:message>
+			</ee:transform>
+			<http:request method="POST" doc:name="Request" doc:id="be659bd8-ce72-4356-9e49-18a314adfd92" config-ref="HTTP_Request_configuration" path="/"/>
+		</munit:execution>
+		<munit:validation >
+			<munit-tools:assert-that doc:name="Assert that price per unit is equal to 7" doc:id="6fe2bebb-8ffa-4bfe-86a5-dd1373863398" expression='#[output application/java --- payload["item price per unit"]]' is="#[MunitTools::equalTo(7)]"/>
+			<munit-tools:assert-that doc:name="Assert response status" doc:id="e399bb68-26ef-428c-9b68-89ca73bf76b1" expression="#[attributes.statusCode]" is="#[MunitTools::equalTo(200)]" />
+
+		</munit:validation>
+	</munit:test>
+
+</mule>

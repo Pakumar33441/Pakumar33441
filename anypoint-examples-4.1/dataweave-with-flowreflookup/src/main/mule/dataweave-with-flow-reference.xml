@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:scripting="http://www.mulesoft.org/schema/mule/scripting" xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:file="http://www.mulesoft.org/schema/mule/file" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd
+http://www.mulesoft.org/schema/mule/scripting http://www.mulesoft.org/schema/mule/scripting/current/mule-scripting.xsd">
+	<file:config name="File_Config" doc:name="File Config" doc:id="ec0457fa-920a-4cf0-9fb9-2be6a6583b98" >
+		<file:connection workingDir="${file.working.dir}" />
+	</file:config>
+	<salesforce:sfdc-config name="Salesforce_Sfdc_config" doc:name="Salesforce Sfdc config" doc:id="0e32d0af-11e6-43ec-bdf9-30187379fd69" >
+		<salesforce:basic-connection username="${sfdc.user}" password="${sfdc.password}" securityToken="${sfdc.securityToken}" />
+	</salesforce:sfdc-config>
+	<configuration-properties file="mule-artifact.properties" doc:name="Configuration properties" doc:id="f7346260-15da-41c9-b909-341b10c91b74" />
+	<flow name="CreateNewSalesforceAccountFlow" doc:description="From the content of a CSV file, creates new accounts in Salesforce." doc:id="00972067-38f5-4a4b-990a-8ebf26230253" >
+		<scheduler doc:name="Scheduler" doc:description="Triggers the flow periodically" doc:id="2122e982-8fb5-4837-a73c-8fc52aaa1fcf" >
+			<scheduling-strategy >
+				<fixed-frequency frequency="10000"/>
+			</scheduling-strategy>
+		</scheduler>
+		<file:read config-ref="File_Config" path="companies.csv" doc:name="Read CSV file" doc:id="45aaaec0-3b5f-4057-ac05-e01a88e05933" outputMimeType="application/csv" />
+		<ee:transform doc:name="Map to SFDC structure" doc:id="ea3d3a07-7b01-4b7f-8764-2409004438be" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+payload map
+{
+  Name: $.company_name,
+  BillingStreet: $.company_address,
+  BillingCity: $.company_city,
+  BillingState: upper($.company_state),
+  BillingPostalCode: $.company_zip,
+  Region__c: lookup("LookUpSalesRegionFlow", $.company_state).region
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+ 		<salesforce:create config-ref="Salesforce_Sfdc_config" doc:name="Create Account" doc:id="d0accbdb-1a34-4bf9-a41e-83a71664fb84" type="Account"/>
+	</flow>
+	<flow name="LookUpSalesRegionFlow" doc:description="The script uses data in the state field to add a region to the payload according to location." doc:id="a4fb2f53-d56f-425e-ad04-0ab000c62801" >
+		<scripting:execute engine="groovy" doc:name="Get Region by State" doc:id="171b5cd1-59ae-465b-9e27-815a094afe2c" >
+			<scripting:code >def region = &quot;UNKNOWN&quot;
+if (payload != null) {
+	payload = payload.toUpperCase()
+}
+println &quot;State to lookup is: &quot; + payload
+switch (payload) {
+	case [&quot;CT&quot;,&quot;ME&quot;,&quot;MA&quot;,&quot;NH&quot;,&quot;VT&quot;,&quot;RI&quot;,&quot;NY&quot;,&quot;NJ&quot;,&quot;DE&quot;,&quot;DC&quot;,&quot;MD&quot;,&quot;NH&quot;]:
+      region = &quot;North East&quot;
+      break
+      case [&quot;AL&quot;,&quot;AR&quot;,&quot;FL&quot;, &quot;GA&quot;,&quot;LA&quot; ,&quot;SC&quot;,&quot;NC&quot;,&quot;TN&quot;,&quot;TX&quot;]:
+      region = &quot;South East&quot;
+      break
+      case [&quot;ID&quot;,&quot;IL&quot;, &quot;IA&quot;,&quot;KS&quot;,&quot;MT&quot;, &quot;WY&quot;,&quot;ND&quot;,&quot;SD&quot;,&quot;OH&quot; ]:
+      region = &quot;Mid West&quot;
+      break
+      case [&quot;AZ&quot;,&quot;CO&quot;,&quot;OK&quot;,&quot;NM&quot;, &quot;NV&quot;]:
+      region = &quot;South West&quot;
+      break
+      case [&quot;CA&quot;,&quot;HI&quot;,&quot;WA&quot;,&quot;OR&quot;, &quot;AK&quot;]:
+      region = &quot;West Coast&quot;
+      break
+}
+return [&quot;region&quot;:region]</scripting:code>
+		</scripting:execute>
+		<set-payload value="#[payload]" doc:name="Set Payload" doc:id="b7163e15-c7f4-4342-b681-37a611c86b84" mimeType="application/java"/>
+		<logger level="INFO" doc:name="Log the region" doc:id="e4410cb1-d336-4969-95df-e5a413cb8df3" message="#['Region is: ' ++ payload.region]" />
+	</flow>
+</mule>

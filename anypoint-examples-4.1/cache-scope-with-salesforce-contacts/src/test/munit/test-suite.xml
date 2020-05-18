@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns:scripting="http://www.mulesoft.org/schema/mule/scripting"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:munit="http://www.mulesoft.org/schema/mule/munit" xmlns:munit-tools="http://www.mulesoft.org/schema/mule/munit-tools"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/scripting http://www.mulesoft.org/schema/mule/scripting/current/mule-scripting.xsd
+		http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+		http://www.mulesoft.org/schema/mule/munit http://www.mulesoft.org/schema/mule/munit/current/mule-munit.xsd
+		http://www.mulesoft.org/schema/mule/munit-tools  http://www.mulesoft.org/schema/mule/munit-tools/current/mule-munit-tools.xsd">
+	<munit:config name="test-suite.xml" />
+	<http:request-config name="HTTP_Request_configuration" doc:name="HTTP Request configuration" doc:id="3cfb1b75-5d2c-48b1-89c7-40bbfbe118c0" >
+		<http:request-connection host="localhost" port="${http.port}" />
+	</http:request-config>
+	<munit:test name="test-suite-cache-scope-with-salesforce-contactsFlowTest" description="Test" doc:id="f1d44ae8-a445-43df-b8e1-93dbf6fd3388" >
+		<munit:enable-flow-sources>
+	        <munit:enable-flow-source value="cache-scope-with-salesforce-contactsFlow"/>
+    	</munit:enable-flow-sources>
+		<munit:execution>
+			<http:request method="GET" doc:name="Get contacts" doc:id="dbe7c702-c84b-498e-9cb0-c908b7719b36" path="/" config-ref="HTTP_Request_configuration" outputMimeType="application/json"/>
+		</munit:execution>
+		<munit:validation >
+			<munit-tools:assert-that doc:name="Assert response status" doc:id="75bb7d0a-abd2-4526-8463-c826bb7507b0" message="Response status is not valid!" expression="#[attributes.statusCode]" is="#[MunitTools::equalTo(200)]"/>
+			<munit-tools:assert-that doc:name="Assert that body isn't empty" doc:id="7a5395bc-a858-4898-aaea-d23850d83f0c" is="#[MunitTools::notNullValue()]" expression="#[payload]" message="Body is empty!"/>
+			<munit-tools:verify-call doc:name="Verify Salesforce connector was used to get data" doc:id="e6b7858f-cf7c-4821-9387-d1769b87adba" processor="salesforce:query" times="1"/>
+			<set-variable value="#[write(payload, 'application/json')]" doc:name="Store response body to variable" doc:id="8450918d-9e91-48c0-9e85-ed9b1760013e" variableName="responseBody" mimeType="application/json"/>
+			<http:request method="GET" doc:name="Get contacts again" doc:id="7064170b-4dcb-4dc9-94aa-6166756711ee" config-ref="HTTP_Request_configuration" outputMimeType="text/plain" path="/"/>
+			<munit-tools:assert-that doc:name="Assert response status" doc:id="eec3c143-9eed-4cc2-b184-5fbb71f630ff" expression="#[attributes.statusCode]" is="#[MunitTools::equalTo(200)]" message="Response status is not valid!"/>
+			<munit-tools:assert-that doc:name="Assert that response body is the same as before" doc:id="dfc38c56-5a7c-454a-8253-bdc7c0fc57df" expression="#[payload]" is="#[MunitTools::equalTo(vars.responseBody)]" message="Response body does not match the one from previous request!"/>
+			<munit-tools:verify-call doc:name="Verify the SFDC connector was used only once" doc:id="aa1f3100-67d6-4f0b-83f6-8400699c4f6b" processor="salesforce:query" times="1"/>
+			<http:request method="GET" doc:name="Get contacts once again" doc:id="7064170b-4dcb-4dc9-94aa-6166756711ee" config-ref="HTTP_Request_configuration" outputMimeType="text/plain" path="/"/>
+			<munit-tools:assert-that doc:name="Assert response status" doc:id="eec3c143-9eed-4cc2-b184-5fbb71f630ff" expression="#[attributes.statusCode]" is="#[MunitTools::equalTo(200)]" message="Response status is not valid!"/>
+			<munit-tools:assert-that doc:name="Assert that response body is the same as before" doc:id="dfc38c56-5a7c-454a-8253-bdc7c0fc57df" expression="#[payload]" is="#[MunitTools::equalTo(vars.responseBody)]" message="Response body does not match the one from previous request!"/>
+			<munit-tools:verify-call doc:name="Verify the SFDC connector was used only once" doc:id="aa1f3100-67d6-4f0b-83f6-8400699c4f6b" processor="salesforce:query" times="1"/>
+</munit:validation>
+	</munit:test>
+
+
+</mule>

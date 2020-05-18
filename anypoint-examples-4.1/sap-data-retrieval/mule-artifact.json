@@ -1,0 +1,22 @@
+{
+  "configs": [
+    "sap-data-retrieval.xml"
+  ],
+  "secureProperties": [],
+  "redeploymentEnabled": true,
+  "name": "sap-data-retrieval",
+  "minMuleVersion": "4.1.4",
+  "requiredProduct": "MULE_EE",
+  "classLoaderModelLoaderDescriptor": {
+    "id": "mule",
+    "attributes": {
+      "exportedResources": [
+        "api\\sap-api.raml"
+      ]
+    }
+  },
+  "bundleDescriptorLoader": {
+    "id": "mule",
+    "attributes": {}
+  }
+}

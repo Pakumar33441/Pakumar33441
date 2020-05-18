@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:amqp="http://www.mulesoft.org/schema/mule/amqp" xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/amqp http://www.mulesoft.org/schema/mule/amqp/current/mule-amqp.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="d5c4e935-8b7d-43d3-9e15-53ca345457a6" >
+		<http:listener-connection host="0.0.0.0" port="${http.port}" />
+	</http:listener-config>
+	<amqp:config name="Amqp_Config" doc:name="Amqp Config" doc:id="f7ece905-068d-42f7-a771-0ac3085a1023" >
+		<amqp:connection host="localhost" port="5672" username="guest" password="guest" />
+	</amqp:config>
+	<configuration-properties doc:name="Configuration properties" doc:id="ea53c274-311f-4384-8784-8727b3734971" file="mule-artifact.properties" />
+	<flow name="sending-json-data-to-a-amqp-queueFlow" doc:id="1284ea57-a00d-4e27-ad70-ee3a292a1952" >
+		<http:listener doc:name="Recieve HTTP request" doc:id="f917d9d0-1176-44b1-8b03-965fd117b7dc" config-ref="HTTP_Listener_config" path="/"/>
+		<logger level="INFO" doc:name="Log the message content to be sent" doc:id="14d7665e-ce2d-4e8e-a824-cbf782584136" message="Payload to be send: #[payload]"/>
+		<amqp:publish doc:name="Send to AMQP" doc:id="e5487859-fd2e-4a3a-9a0a-76a125e3562f" config-ref="Amqp_Config" exchangeName="sales_exchange"/>
+	</flow>
+</mule>

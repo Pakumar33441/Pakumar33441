@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:file="http://www.mulesoft.org/schema/mule/file"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd">
+	<http:listener-config name="HTTP_Listener_config"
+		doc:name="HTTP Listener config" doc:id="d3086226-a47c-431d-a4cb-1abcd6947e1b">
+		<http:listener-connection host="0.0.0.0"
+			port="${http.port}" />
+	</http:listener-config>
+	<file:config name="File_Config" doc:name="File Config"
+		doc:id="63915c68-e422-4843-aaed-03f906276727">
+		<file:connection workingDir="${file.working.dir}" />
+	</file:config>
+	<configuration-properties doc:name="Configuration properties"
+		doc:id="3d9197f8-6015-40b1-9227-63aa66871da3" file="mule-artifact.properties" />
+
+	<flow name="httpRenderFlow" doc:id="c36f5d33-1487-490b-a6f5-8f98dee55c53">
+		<http:listener doc:name="/uploadFile"
+			doc:id="976582bc-0f95-47fc-b9a2-a5f7d9cb552c" config-ref="HTTP_Listener_config"
+			path="/uploadFile" />
+		<parse-template location="uploadFile.html" doc:name="Upload file page"
+			doc:id="a8ec71fe-5fc7-4eef-b7b7-2b9477b73ff1" />
+	</flow>
+
+	<flow name="httpMultipartRequestFlow" doc:id="3762e89b-6be0-4870-89cd-026ce83e0454">
+		<http:listener config-ref="HTTP_Listener_config" path="/uploadFile"
+			doc:name="Listener" doc:id="dc7462e3-b264-49ac-909a-fe4e4cd7d8f9"
+			allowedMethods="POST" outputMimeType="multipart/form-data" />
+		<set-variable
+			value='#[output application/json --- payload.parts.file.headers["Content-Disposition"].filename]'
+			doc:name="Set Variable" doc:id="f1016d54-14c5-4500-baeb-297c11eb681d"
+			variableName="fileName" />
+		<logger level="INFO" doc:name="Log file Content-Type"
+			doc:id="8e21d10b-9339-4f87-a608-f22c3085ee89"
+			message='File Content-Type: #[output application/json --- payload.parts.file.headers["Content-Type"]]' />
+		<set-payload
+			value="#[output application/json --- payload.parts.file.content]"
+			doc:name="Set file content as Payload" doc:id="ce14374c-0133-43f1-b921-6a4b01d53f34" />
+		<file:write config-ref="File_Config" path="#[vars.fileName]"
+			doc:name="Write content to file " doc:id="7982377f-4547-422a-b098-8348c65bcfc0" />
+	</flow>
+</mule>

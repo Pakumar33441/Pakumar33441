@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="d0856700-f67c-4991-8ea8-913b1aab3541" >
+		<http:listener-connection host="0.0.0.0" port="8081" />
+	</http:listener-config>
+	<salesforce:sfdc-config name="Salesforce_Sfdc_config" doc:name="Salesforce Sfdc config" doc:id="54fdc8be-b84f-4355-bd86-2ff486f3b71d" >
+		<salesforce:basic-connection username="${sfdc.username}" password="${sfdc.password}" securityToken="${sfdc.securityToken}" />
+	</salesforce:sfdc-config>
+	<ee:object-store-caching-strategy name="Caching_Strategy" doc:name="Caching Strategy" doc:id="b4a79596-68ac-448c-bc62-39d736d0e451" />
+	<configuration-properties doc:name="Configuration properties" doc:id="e2c3f4e2-226c-48a6-aab1-dd36e6e4cc56" file="mule-artifact.properties" />
+	<flow name="cache-scope-with-salesforce-contactsFlow" doc:id="11b733e7-3084-4090-94c9-c5205914346d" >
+		<http:listener config-ref="HTTP_Listener_config" path="/" doc:name="HTTP Listener" doc:id="c1511930-2eab-4a88-9041-6d0e17127400" />
+		<ee:cache doc:name="Cache" doc:id="4eb127f5-cb3a-4af1-8b1c-05346077d512" cachingStrategy-ref="Caching_Strategy">
+			<logger level="INFO" doc:name="Logger" doc:id="07e6bac1-4ed0-4088-889a-c341ed1e9737" message="Querying Salesforce (not from Cache)" />
+			<salesforce:query config-ref="Salesforce_Sfdc_config" doc:name="Query Contacts from Salesforce" doc:id="42a88e11-9602-4d03-8a3b-5019368c24af">
+			<salesforce:salesforce-query>SELECT Id, FirstName, LastName, Email, Phone FROM Contact limit 200</salesforce:salesforce-query>
+		</salesforce:query>
+		</ee:cache>
+		<logger level="INFO" doc:name="Logger" doc:id="224e59d2-8f60-4bdb-ac9b-afc4c19603eb" message="Returning Contacts"/>
+		<ee:transform doc:name="Transform Message" doc:id="99ed0c98-5660-4fb9-bede-8d546e46e6c7">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+</mule>

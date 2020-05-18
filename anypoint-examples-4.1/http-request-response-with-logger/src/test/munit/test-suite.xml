@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:munit="http://www.mulesoft.org/schema/mule/munit"
+	xmlns:munit-tools="http://www.mulesoft.org/schema/mule/munit-tools"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xsi:schemaLocation="
+		http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+		http://www.mulesoft.org/schema/mule/munit http://www.mulesoft.org/schema/mule/munit/current/mule-munit.xsd
+		http://www.mulesoft.org/schema/mule/munit-tools  http://www.mulesoft.org/schema/mule/munit-tools/current/mule-munit-tools.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<munit:config name="test-suite.xml" />
+	<http:request-config name="HTTP_Request_configuration"
+		doc:name="HTTP Request configuration" doc:id="0290942b-09fd-455e-ba21-672696ed5bb8"
+		basePath="/">
+		<http:request-connection host="0.0.0.0" port="${http.port}" />
+	</http:request-config>
+	<munit:test name="http-request-response-with-loggerFlowTest"
+		description="Test" doc:id="9b178ca2-3994-4656-9af6-320e6c724b4a">
+		<munit:enable-flow-sources>
+			<munit:enable-flow-source value="http-request-response-with-loggerFlow" />
+		</munit:enable-flow-sources>
+		<munit:execution>
+			<http:request method="GET" doc:name="Request to /api/test"
+				doc:id="48766497-d10d-42a4-a4ec-40e97f0d3902" path="/api/test"
+				config-ref="HTTP_Request_configuration" />
+		</munit:execution>
+		<munit:validation>
+			<ee:transform doc:name="Transform response"
+				doc:id="6bbc2dea-8f03-4749-85b9-ede382a22a75">
+				<ee:message>
+					<ee:set-payload><![CDATA[%dw 2.0
+output application/java
+---
+payload]]></ee:set-payload>
+				</ee:message>
+			</ee:transform>
+			<munit-tools:assert-that
+				doc:name="Assert that payload is equal to '/api/test'" doc:id="81ab7718-268f-4e32-8aca-38b06eb22ec7"
+				expression="#[payload]" is="#[MunitTools::equalTo('/api/test')]"
+				message="Payload should be equal to '/api/test'" />
+			<munit-tools:assert-that doc:name="Assert response status"
+				doc:id="e399bb68-26ef-428c-9b68-89ca73bf76b1" expression="#[attributes.statusCode]"
+				is="#[MunitTools::equalTo(200)]" />
+			<munit-tools:assert-that doc:name="Assert content type"
+				doc:id="5c3d6cd1-d15a-40e2-9a03-12589ce76d9f" expression="#[attributes.headers['content-type']]"
+				is="#[MunitTools::equalTo('text/plain')]" />
+		</munit:validation>
+	</munit:test>
+
+</mule>

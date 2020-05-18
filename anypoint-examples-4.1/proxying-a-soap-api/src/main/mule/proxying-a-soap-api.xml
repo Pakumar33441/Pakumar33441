@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:wsc="http://www.mulesoft.org/schema/mule/wsc"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:spring="http://www.springframework.org/schema/beans" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/wsc http://www.mulesoft.org/schema/mule/wsc/current/mule-wsc.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<configuration-properties doc:name="Configuration properties" file="mule-artifact.properties" />
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="007cd910-ecad-41fd-a651-663fbfbd8e04" >
+		<http:listener-connection host="0.0.0.0" port="${http.port}" />
+	</http:listener-config>
+	<wsc:config name="Web_Service_Consumer_Config" doc:name="Web Service Consumer Config" doc:id="b371c47f-a4ef-41e9-91c7-b6bacc67fb2e" >
+		<wsc:connection wsdlLocation="tshirt.wsdl" service="TshirtService" port="TshirtServicePort" address="http://tshirt-service.cloudhub.io" />
+	</wsc:config>
+	<flow name="proxying-a-soap-apiFlow" doc:id="12a66cac-aeb4-4d23-b3ea-f3e13a60b7df" >
+		<http:listener config-ref="HTTP_Listener_config" path="/listInventory" doc:name="Listener" doc:id="dc219f5b-33ec-43eb-bd82-009319c610d8" outputMimeType="application/xml"/>
+		<wsc:consume config-ref="Web_Service_Consumer_Config" doc:name="Inventory service" doc:id="b4850a7c-18ad-47d8-a19d-cb05ca45d70f" operation="ListInventory">
+		</wsc:consume>
+		<ee:transform doc:name="Create response" doc:id="8a3e2c81-37e3-49f8-9b25-4c4399e0e272" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/xml
+---
+payload.body]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+</mule>

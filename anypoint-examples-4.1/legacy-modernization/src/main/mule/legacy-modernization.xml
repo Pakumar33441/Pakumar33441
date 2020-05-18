@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<mule xmlns:file="http://www.mulesoft.org/schema/mule/file" xmlns:java="http://www.mulesoft.org/schema/mule/java" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+    xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:apikit-soap="http://www.mulesoft.org/schema/mule/apikit-soap" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+    xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/apikit-soap http://www.mulesoft.org/schema/mule/apikit-soap/current/mule-apikit-soap.xsd http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/java http://www.mulesoft.org/schema/mule/java/current/mule-java.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd">
+    <http:listener-config name="api-httpListenerConfig" doc:name="HTTP Listener config">
+        <http:listener-connection host="0.0.0.0" port="${http.port}" />
+    </http:listener-config>
+    <apikit-soap:config name="soapkit-config" port="IFulfillmentPort" service="IFulfillmentService" wsdlLocation="OrderFulfillment.wsdl" />
+    <file:config name="File_Config" doc:name="File Config" doc:id="bf55a90f-6e71-40b6-b6fc-c2c894170e75">
+        <file:connection workingDir="${file.workingDir}" />
+    </file:config>
+    <configuration-properties doc:name="Configuration properties" doc:id="a9e2819b-9653-4607-ae3d-676f1bc8a07f"
+        file="common.properties" />
+    <flow name="api-main">
+        <http:listener config-ref="api-httpListenerConfig" path="/IFulfillmentService/IFulfillmentPort" doc:name="Listener">
+            <http:response>
+                <http:body>#[payload]</http:body>
+                <http:headers>#[attributes.protocolHeaders default {}]</http:headers>
+            </http:response>
+            <http:error-response>
+                <http:body>#[payload]</http:body>
+                <http:headers>#[attributes.protocolHeaders default {}]</http:headers>
+            </http:error-response>
+        </http:listener>
+        <apikit-soap:router config-ref="soapkit-config" doc:name="SOAP Router">
+            <apikit-soap:attributes><![CDATA[#[
+                %dw 2.0
+                output application/java
+                ---
+                {
+                headers: attributes.headers,
+                method: attributes.method,
+                queryString:
+                attributes.queryString
+                }]]]></apikit-soap:attributes>
+        </apikit-soap:router>
+    </flow>
+    <flow name="putShippingOrder:\soapkit-config">
+        <ee:transform doc:id="b908e607-d39b-4464-9bfc-d3e6fdf8c4f6">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/java
+ns ns0 http://ordermgmt.org/IFulfillmentService
+---
+{
+    body: {
+        ns0#putShippingOrderResponse: {
+            ns0#ShippingOrderConfirmation: {
+                ns0#shippingOrder: payload.body.putShippingOrder,
+                ns0#orderReceivedStatus: true
+            }
+        }
+    } write "application/xml"
+}]]></ee:set-payload>
+            </ee:message>
+            <ee:variables>
+                <ee:set-variable variableName="shippingOrder"><![CDATA[%dw 2.0
+output application/java
+---
+{
+  shippingId      : payload.body.putShippingOrder.shippingId,
+  billingAddress  : payload.body.putShippingOrder.billingAddress as Object {class:"org.mule.examples.ordermgmt.Address"},
+  shippingAddress : payload.body.putShippingOrder.shippingAddress as Object {class:"org.mule.examples.ordermgmt.Address"},
+  order           : {orderItemList: payload.body.putShippingOrder.order.*orderItem map $ as Object {class:"org.mule.examples.ordermgmt.OrderItem"} } as Object {class:"org.mule.examples.ordermgmt.Order"}
+}]]></ee:set-variable>
+            </ee:variables>
+        </ee:transform>
+		<java:new doc:name="Create shippingOrder object" doc:id="bdd89284-c3e4-4b24-960c-789a9e1d22e5" class="org.mule.examples.ordermgmt.ShippingOrder" target="shippingOrder" constructor="ShippingOrder(String, Address, Address, Order)">
+				<java:args><![CDATA[#[{arg0:vars.shippingOrder.shippingId,arg1:vars.shippingOrder.billingAddress,arg2:vars.shippingOrder.shippingAddress,arg3:vars.shippingOrder.order}]]]></java:args>
+			</java:new>
+		<async doc:name="Async" doc:id="e96fb292-1990-49f2-9412-c7f606da4157" >
+			<logger level="INFO" doc:name="Log total amount" doc:id="2763e2e1-a203-4f07-924f-474f28549114" message="Total amount: #[vars.shippingOrder.order.total]" />
+			<ee:transform doc:name="Prepare CSV data" doc:id="a2ad6454-dac9-4de7-8129-6803f1689bd8">
+                <ee:message>
+                    <ee:set-payload><![CDATA[%dw 2.0
+output application/csv header=true
+---
+vars.shippingOrder.order.orderItemList map
+{
+	MSKU                   : $.merchantSKU, 
+	QTY                    : $.quantity,
+    Price                  : $.price,
+	BillingAddressName     : vars.shippingOrder.billingAddress.name,
+	BillingAddressStreet   : vars.shippingOrder.billingAddress.line1 ++ ' ' ++ vars.shippingOrder.billingAddress.line2,
+	BillingAddrCity        : vars.shippingOrder.billingAddress.city,
+	BillingAddrState       : vars.shippingOrder.billingAddress.stateOrProvinceCode,
+	BillingAddrCountry     : vars.shippingOrder.billingAddress.countryCode,
+	BillingAddrZipCode     : vars.shippingOrder.billingAddress.postalCode,
+	ShippingAddrName       : vars.shippingOrder.shippingAddress.name,
+	ShippingAddrStreet     : vars.shippingOrder.shippingAddress.line1 ++ ' ' ++ vars.shippingOrder.shippingAddress.line2,
+	ShippingAddrCity       : vars.shippingOrder.shippingAddress.city,
+	ShippingAddrState      : vars.shippingOrder.shippingAddress.stateOrProvinceCode,
+	ShippingAddrCountry    : vars.shippingOrder.shippingAddress.countryCode,
+	ShippingAddrZipCode    : vars.shippingOrder.shippingAddress.postalCode,
+	ShippingId             : vars.shippingOrder.shippingId
+}
+]]></ee:set-payload>
+                </ee:message>
+            </ee:transform>
+			<file:write doc:name="Write CSV file" doc:id="e797ed29-2f85-4d28-a3da-a68e38eeff3f" config-ref="File_Config" path="#[p('file.path')++&quot;\ShippingOrder-&quot;++(now() as String{format:'dd-MM-yy_HH-mm-ss.SSS'})++&quot;.csv&quot;]" />
+		</async>
+    </flow>
+</mule>

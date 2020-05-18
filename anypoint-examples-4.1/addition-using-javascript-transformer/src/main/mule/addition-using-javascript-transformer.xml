@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns:scripting="http://www.mulesoft.org/schema/mule/scripting"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/scripting http://www.mulesoft.org/schema/mule/scripting/current/mule-scripting.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="76835fb5-90d5-481f-af05-f2d908d7ed87" >
+		<http:listener-connection host="0.0.0.0" port="${http.port}" />
+	</http:listener-config>
+	<configuration-properties doc:name="Configuration properties" doc:id="0d6337ac-27b1-4107-ab2e-6c94783f35ee" file="mule-artifact.properties" />
+	<flow name="addition-using-javascript-transformerFlow" doc:id="91ffb194-a7b7-48d5-8ccd-a022fb04d30d" >
+		<http:listener doc:name="Listener" doc:id="f1e8d4ef-7ad4-4511-8cd3-9292fd123b66" config-ref="HTTP_Listener_config" path="/">
+			<ee:repeatable-file-store-stream />
+		</http:listener>
+		<ee:transform doc:name="Convert input to Java Object" doc:id="7033abec-0db7-4c8f-ac4b-2d1ba8dbd28d">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/java
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<scripting:execute doc:name="Perform calculation" doc:id="5574e588-96c2-46ce-ae51-3b4b6c335db8" engine="nashorn">
+			<scripting:code >var list = eval(payload);
+var sum = 0;
+for (var i in list)
+sum += list[i];
+payload = sum;</scripting:code>
+		</scripting:execute>
+		<logger level="INFO" doc:name="Log the outcome" doc:id="b37886ec-cefd-40fe-ad8c-fd629cec2b46" message="Sum is: #[payload]"/>
+		<set-payload value='#["Sum is: " ++ payload]' doc:name="Set payload to the calculation outcome" doc:id="e07570cc-a048-4111-bf14-bab0425dc27f" />
+	</flow>
+</mule>

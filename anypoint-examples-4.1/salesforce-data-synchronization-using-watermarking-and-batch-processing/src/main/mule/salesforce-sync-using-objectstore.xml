@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce" xmlns:batch="http://www.mulesoft.org/schema/mule/batch"
+	xmlns:os="http://www.mulesoft.org/schema/mule/os"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd
+http://www.mulesoft.org/schema/mule/batch http://www.mulesoft.org/schema/mule/batch/current/mule-batch.xsd
+http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd">
+	<salesforce:sfdc-config name="Salesforce_Sfdc_config" doc:name="Salesforce Sfdc config" doc:id="b9399585-af4f-49c5-987b-138a71dc45ca" >
+		<salesforce:basic-connection username="${sfdc.username}" password="${sfdc.password}" securityToken="${sfdc.securityToken}" />
+	</salesforce:sfdc-config>
+	<configuration-properties file="mule-artifact.properties" doc:name="Configuration properties" doc:id="faded56c-ab88-4337-996e-ac277783d58e" />
+	<os:object-store name="Object_store" doc:name="Object store" doc:id="42121b6d-2054-4e82-b213-3239cdd7b03c" persistent="false" />
+	<flow name="salesforce-date-sync-using-watermarkingFlow" doc:id="d774e88d-5c56-4f19-8524-290f2abaeba7" >
+		<scheduler doc:name="Trigger sync every 10 seconds" doc:id="ff48174e-594e-4f1f-a3fb-b8429e77e551" >
+			<scheduling-strategy >
+				<fixed-frequency frequency="${scheduler.frequency}" timeUnit="SECONDS" startDelay="${scheduler.startDelay}"/>
+			</scheduling-strategy>
+		</scheduler>
+		<os:retrieve key="lastUpdateTimestampKey" doc:name="Retrieve lastUpdateTimestamp" doc:id="db0497b5-172a-41b1-b758-c1e1d2d1029e" target="lastUpdateTimestamp" targetValue="#[payload as String]" objectStore="Object_store">
+						<os:default-value ><![CDATA[#[read(p('watermark.default.expression'))]]]></os:default-value>
+					</os:retrieve>
+		<salesforce:query config-ref="Salesforce_Sfdc_config" doc:name="Read Contacts updated since last update" doc:id="2a4b57de-204d-43f7-8859-0bc39861c6ff">
+						<salesforce:salesforce-query>SELECT Id,Name,LastModifiedDate FROM Contact WHERE LastModifiedDate &gt; :lastUpdateTimestamp</salesforce:salesforce-query>
+						<salesforce:parameters><![CDATA[#[output application/java
+---
+{
+	"lastUpdateTimestamp" : vars.lastUpdateTimestamp
+}]]]></salesforce:parameters>
+					</salesforce:query>
+		<os:store key="lastUpdateTimestampKey" doc:name="Update lastUpdateTimestamp" doc:id="de6f8513-a99a-4817-8e24-de29981f136f" objectStore="Object_store">
+			<os:value><![CDATA[#[now()]]]></os:value>
+		</os:store>
+		<batch:job jobName="salesforce-sync-Batch_Job" doc:id="6462be41-4754-46ee-b1f0-1e0a5589bf18" >
+			<batch:process-records >
+				<batch:step name="Logging_Step" doc:id="48087835-2a9b-4fa5-b673-b71231dd0e91">
+					<logger level="INFO" doc:name="Log each new contact" doc:id="5b5510ef-6925-4413-9848-8c05868f8fa2" message="#['Contact recently modified: ' ++ write(payload, &quot;application/json&quot;,  {&quot;indent&quot;: &quot;false&quot;})]"/>
+				</batch:step>
+			</batch:process-records>
+		</batch:job>
+	</flow>
+</mule>

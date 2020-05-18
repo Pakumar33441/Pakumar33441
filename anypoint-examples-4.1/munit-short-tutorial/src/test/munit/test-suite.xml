@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:munit="http://www.mulesoft.org/schema/mule/munit" xmlns:munit-tools="http://www.mulesoft.org/schema/mule/munit-tools"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xsi:schemaLocation="
+		http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+		http://www.mulesoft.org/schema/mule/munit http://www.mulesoft.org/schema/mule/munit/current/mule-munit.xsd
+		http://www.mulesoft.org/schema/mule/munit-tools  http://www.mulesoft.org/schema/mule/munit-tools/current/mule-munit-tools.xsd">
+	<munit:config name="test-suite.xml" doc:name="MUnit configuration"/>
+	<import file="business-logic.xml" doc:name="Import" doc:id="ac606452-a91c-44ff-8451-dca7b5002e5d" />
+	<munit:test name="secondaryFlowTest_1" description="MUnit Test" doc:id="fd4961a0-d7ed-4f63-b8c6-94c3407ad54c" >
+		<munit:execution >
+			<munit:set-event doc:name="Set Message payload == payload_1" doc:id="44f32e01-2d75-4847-b131-92ad70418bbb" >
+				<munit:payload value="#['payload_1']" />
+			</munit:set-event>
+			<flow-ref name="secondaryFlow" doc:name="secondaryFlow" doc:id="a14514f4-6ba7-4651-ac33-890e0a053aa8" />
+		</munit:execution>
+		<munit:validation >
+			<munit-tools:assert-that expression="#[vars.flowValue]" is="#[MunitTools::equalTo('flowValue_1')]" doc:name="Assert payload" doc:id="ddd63cd5-0ce8-4d4d-b652-3d0cd7aa81c0" />
+			<munit-tools:verify-call processor="mule:flow-ref" doc:name="Verify call" doc:id="eaf4d885-0618-4008-bf87-0351fcbf4b77" times="1">
+				<munit-tools:with-attributes>
+					<munit-tools:with-attribute attributeName="name" whereValue="#['firstSubFlow']" />
+				</munit-tools:with-attributes>
+			</munit-tools:verify-call>
+		</munit:validation>
+	</munit:test>
+	<munit:test name="secondaryFlowTest_2" description="MUnit Test" doc:id="c4d6a6c2-39d5-42e6-b179-cd3bc3335608" >
+		<munit:execution >
+			<munit:set-event doc:name="Set Message payload == payload_2" doc:id="44f32e01-2d75-4847-b131-92ad70418bbb" >
+				<munit:payload value="#['payload_2']" />
+			</munit:set-event>
+			<flow-ref name="secondaryFlow" doc:name="secondaryFlow" doc:id="a14514f4-6ba7-4651-ac33-890e0a053aa8" />		
+		</munit:execution>
+		<munit:validation >
+			<munit-tools:assert-that expression="#[vars.flowValue]" is="#[MunitTools::equalTo('flowValue_2')]" doc:name="Assert payload" doc:id="ddd63cd5-0ce8-4d4d-b652-3d0cd7aa81c0" />
+			<munit-tools:verify-call processor="mule:flow-ref" doc:name="Verify call" doc:id="eaf4d885-0618-4008-bf87-0351fcbf4b77" times="1">
+				<munit-tools:with-attributes >
+					<munit-tools:with-attribute attributeName="name" whereValue="#['secondSubFlow']" />
+				</munit-tools:with-attributes>
+			</munit-tools:verify-call>			
+		</munit:validation>
+	</munit:test>
+	<munit:test name="functionalTest_mainFlow_1" description="MUnit Test" doc:id="11c77524-8801-4b24-b22a-9bb84afaf194" >
+		<munit:execution >
+			<munit:set-event doc:name="Set Query Parameter url_key=payload_1" doc:id="ec7e5eb2-1ccf-44c7-b27b-707b03e8d79a" >
+				<munit:payload value="#['']" />
+				<munit:attributes value="#[{queryParams: {url_key: 'payload_1'}}]" />
+			</munit:set-event>
+			<flow-ref name="mainFlow" doc:name="mainFlow" doc:id="a14514f4-6ba7-4651-ac33-890e0a053aa8" />
+		</munit:execution>
+		<munit:validation >
+			<munit-tools:assert-that expression="#[vars.flowValue]" is="#[MunitTools::equalTo('flowValue_1')]" doc:name="Assert payload" doc:id="ddd63cd5-0ce8-4d4d-b652-3d0cd7aa81c0" />
+		</munit:validation>
+	</munit:test>
+	<munit:test name="functionalTest_mainFlow_2" description="MUnit Test" doc:id="0dad4c80-9a2a-450f-9ea1-e919c1ed281f" >
+		<munit:execution >
+			<munit:set-event doc:name="Set Query Parameter url_key=payload_2" doc:id="ec7e5eb2-1ccf-44c7-b27b-707b03e8d79a" >
+				<munit:payload value="#['']" />
+				<munit:attributes value="#[{queryParams: {url_key: 'payload_2'}}]" />
+			</munit:set-event>
+			<flow-ref name="mainFlow" doc:name="mainFlow" doc:id="a14514f4-6ba7-4651-ac33-890e0a053aa8" />
+		</munit:execution>
+		<munit:validation >
+			<munit-tools:assert-that expression="#[vars.flowValue]" is="#[MunitTools::equalTo('flowValue_2')]" doc:name="Assert payload" doc:id="ddd63cd5-0ce8-4d4d-b652-3d0cd7aa81c0" />
+		</munit:validation>	
+	</munit:test>
+	<munit:test name="test_withMock_1" description="MUnit Test" doc:id="c42413a3-2456-4567-966e-3eb866846158" >
+		<munit:behavior >
+			<munit-tools:mock-when processor="mule:set-payload" doc:name="Mock when" doc:id="9e583c41-1f41-451e-b5e2-722b9b02ab15" >
+				<munit-tools:with-attributes >
+					<munit-tools:with-attribute attributeName="doc:name" whereValue="#[&quot;Set query param 'url_key' to payload&quot;]" />
+				</munit-tools:with-attributes>
+				<munit-tools:then-return >
+					<munit-tools:payload value="#['']" />
+				</munit-tools:then-return>
+			</munit-tools:mock-when>
+			<munit-tools:mock-when processor="mule:flow-ref" doc:name="Mock when" doc:id="da633da9-00d7-40c2-b51e-1c1f1ae08ed2" >
+				<munit-tools:with-attributes >
+					<munit-tools:with-attribute attributeName="name" whereValue="#['secondaryFlow']" />
+				</munit-tools:with-attributes>
+				<munit-tools:then-return >
+					<munit-tools:payload value="#['']" />
+					<munit-tools:variables >
+						<munit-tools:variable key="flowValue" value="#['flowValue_1']" />
+					</munit-tools:variables>
+				</munit-tools:then-return>
+			</munit-tools:mock-when>
+		</munit:behavior>
+		<munit:execution >
+			<flow-ref name="mainFlow" doc:name="mainFlow" doc:id="60dcd64e-0876-447a-b754-d87f6e2e36ab" />
+		</munit:execution>
+		<munit:validation >
+			<munit-tools:assert-that expression="#[payload]" is="#[MunitTools::equalTo('responsePayload_1')]" doc:name="Assert that" doc:id="d1d00f4e-972b-4e60-8285-faa0205b73f5" />
+		</munit:validation>
+	</munit:test>
+	<munit:test name="test_withMock_2" description="MUnit Test" doc:id="c42413a3-2456-4567-966e-3eb866846158" >
+		<munit:behavior >
+			<munit-tools:mock-when processor="mule:set-payload" doc:name="Mock when" doc:id="9e583c41-1f41-451e-b5e2-722b9b02ab15" >
+				<munit-tools:with-attributes >
+					<munit-tools:with-attribute attributeName="doc:name" whereValue="#[&quot;Set query param 'url_key' to payload&quot;]" />
+				</munit-tools:with-attributes>
+				<munit-tools:then-return >
+					<munit-tools:payload value="#['']" />
+				</munit-tools:then-return>
+			</munit-tools:mock-when>
+			<munit-tools:mock-when processor="mule:flow-ref" doc:name="Mock when" doc:id="da633da9-00d7-40c2-b51e-1c1f1ae08ed2" >
+				<munit-tools:with-attributes >
+					<munit-tools:with-attribute attributeName="name" whereValue="#['secondaryFlow']" />
+				</munit-tools:with-attributes>
+				<munit-tools:then-return >
+					<munit-tools:payload value="#['']" />
+					<munit-tools:variables >
+						<munit-tools:variable key="flowValue" value="#['flowValue_2']" />
+					</munit-tools:variables>
+				</munit-tools:then-return>
+			</munit-tools:mock-when>		
+		</munit:behavior>
+		<munit:execution >
+			<flow-ref name="mainFlow" doc:name="mainFlow" doc:id="60dcd64e-0876-447a-b754-d87f6e2e36ab" />
+		</munit:execution>
+		<munit:validation >
+			<munit-tools:assert-that expression="#[payload]" is="#[MunitTools::equalTo('responsePayload_2')]" doc:name="Assert that" doc:id="d1d00f4e-972b-4e60-8285-faa0205b73f5" />
+		</munit:validation>
+	</munit:test>
+</mule>

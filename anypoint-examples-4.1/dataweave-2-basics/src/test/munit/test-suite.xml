@@ -1,0 +1,242 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:file="http://www.mulesoft.org/schema/mule/file" xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:munit="http://www.mulesoft.org/schema/mule/munit"
+	xmlns:munit-tools="http://www.mulesoft.org/schema/mule/munit-tools"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xsi:schemaLocation="
+		http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+		http://www.mulesoft.org/schema/mule/munit http://www.mulesoft.org/schema/mule/munit/current/mule-munit.xsd
+		http://www.mulesoft.org/schema/mule/munit-tools  http://www.mulesoft.org/schema/mule/munit-tools/current/mule-munit-tools.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<munit:config name="test-suite.xml" />
+	<http:request-config name="HTTP_Request_configuration"
+		doc:name="HTTP Request configuration" doc:id="3f8036b3-7211-4b8b-9f24-1711457b0a5f">
+		<http:request-connection host="0.0.0.0" port="${http.port}" />
+	</http:request-config>
+	<munit:test name="dataweave2-basicsFlowTest" description="Test"
+		doc:id="9db658d4-717d-4777-8282-331d3cf38046">
+		<munit:enable-flow-sources>
+			<munit:enable-flow-source value="dataweave2-basicsFlow" />
+		</munit:enable-flow-sources>
+		<munit:execution>
+			<http:request method="POST" doc:name="Request to greet1"
+				doc:id="2be72432-8624-4293-830b-265398b772c8" config-ref="HTTP_Request_configuration"
+				path="/greet1?username=john&amp;age=18" />
+		</munit:execution>
+		<munit:validation>
+			<ee:transform doc:name="Transform response"
+				doc:id="dcb717ef-5e11-4381-9586-68254b714f19">
+				<ee:message>
+					<ee:set-payload><![CDATA[%dw 2.0
+output application/java
+---
+payload]]></ee:set-payload>
+				</ee:message>
+			</ee:transform>
+			<munit-tools:assert-that
+				doc:name="Assert that response is equal to 'Hello john'" doc:id="37872f30-6bd0-4f4d-bf2b-6820cd9ea4af"
+				expression="#[payload]" is="#[MunitTools::equalTo('Hello john')]" />
+		</munit:validation>
+	</munit:test>
+	<munit:test name="dataweave2-basicsFlow1Test" description="Test"
+		doc:id="89ffad42-99f4-48b5-a671-22d5c1ca6b44">
+		<munit:enable-flow-sources>
+			<munit:enable-flow-source value="dataweave2-basicsFlow1" />
+		</munit:enable-flow-sources>
+		<munit:execution>
+			<http:request method="POST" doc:name="Request to /greet2"
+				doc:id="2be72432-8624-4293-830b-265398b772c8" config-ref="HTTP_Request_configuration"
+				path="/greet2?username=john&amp;age=18" />
+		</munit:execution>
+		<munit:validation>
+			<ee:transform doc:name="Transform response"
+				doc:id="dcb717ef-5e11-4381-9586-68254b714f19">
+				<ee:message>
+					<ee:set-payload><![CDATA[%dw 2.0
+output application/java
+---
+payload]]></ee:set-payload>
+				</ee:message>
+			</ee:transform>
+			<munit-tools:assert-that
+				doc:name="Assert that response is equal to 'Hello john'" doc:id="37872f30-6bd0-4f4d-bf2b-6820cd9ea4af"
+				expression="#[payload]" is="#[MunitTools::equalTo('Hello john')]" />
+		</munit:validation>
+	</munit:test>
+	<munit:test name="dataweave2-basicsFlow2Test" description="Test"
+		doc:id="92d6496f-c015-441c-b62c-551fcbaf9830">
+		<munit:enable-flow-sources>
+			<munit:enable-flow-source value="dataweave2-basicsFlow2" />
+		</munit:enable-flow-sources>
+		<munit:execution>
+			<http:request method="POST" doc:name="Request to /greet3"
+				doc:id="2be72432-8624-4293-830b-265398b772c8" config-ref="HTTP_Request_configuration"
+				path="/greet3?username=john&amp;age=18" />
+		</munit:execution>
+		<munit:validation>
+			<ee:transform doc:name="Transform response"
+				doc:id="dcb717ef-5e11-4381-9586-68254b714f19">
+				<ee:message>
+					<ee:set-payload><![CDATA[%dw 2.0
+output application/java
+---
+payload]]></ee:set-payload>
+				</ee:message>
+			</ee:transform>
+			<munit-tools:assert-that
+				doc:name="Assert that response is equal to 'Hello john'" doc:id="37872f30-6bd0-4f4d-bf2b-6820cd9ea4af"
+				expression="#[payload]" is="#[MunitTools::equalTo('Hello john')]" />
+			<file:read doc:name="Read data from file" doc:id="f5c50a7c-3ca7-4eb2-90c4-c630463f7ce8"
+				config-ref="File_Config" path="${file.txt.name}" outputMimeType="text/plain"
+				outputEncoding="UTF-8" />
+			<ee:transform doc:name="Transform file content"
+				doc:id="80f752d8-842c-4f1d-a27c-6b5da11e29e6">
+				<ee:message>
+					<ee:set-payload><![CDATA[%dw 2.0
+output application/java
+---
+payload]]></ee:set-payload>
+				</ee:message>
+			</ee:transform>
+			<munit-tools:assert-that
+				doc:name="Assert that file content is equal to 'Username: john Age: 18'"
+				doc:id="22afdfe8-06db-4a9c-aa24-297aab489bcc" expression="#[payload]"
+				is="#[MunitTools::equalTo('Username: john Age: 18')]" />
+		</munit:validation>
+	</munit:test>
+	<munit:test name="dataweave2-basicsFlow3Test" description="Test"
+		doc:id="68b16781-8318-4a12-adf1-e52bdb187400">
+		<munit:enable-flow-sources>
+			<munit:enable-flow-source value="dataweave2-basicsFlow3" />
+		</munit:enable-flow-sources>
+		<munit:execution>
+			<http:request method="POST" doc:name="Request to /greet4"
+				doc:id="2be72432-8624-4293-830b-265398b772c8" config-ref="HTTP_Request_configuration"
+				path="/greet4?username=john&amp;age=18" />
+		</munit:execution>
+		<munit:validation>
+			<ee:transform doc:name="Transform response"
+				doc:id="dcb717ef-5e11-4381-9586-68254b714f19">
+				<ee:message>
+					<ee:set-payload><![CDATA[%dw 2.0
+output application/java
+---
+payload]]></ee:set-payload>
+				</ee:message>
+			</ee:transform>
+			<munit-tools:assert-that
+				doc:name="Assert that response is equal to 'Hello john'" doc:id="37872f30-6bd0-4f4d-bf2b-6820cd9ea4af"
+				expression="#[payload]" is="#[MunitTools::equalTo('Hello john')]" />
+			<file:read doc:name="Read data from file" doc:id="f5c50a7c-3ca7-4eb2-90c4-c630463f7ce8"
+				config-ref="File_Config" path="${file.csv.name}" outputMimeType="text/plain"
+				outputEncoding="UTF-8" />
+			<ee:transform doc:name="Transform file content"
+				doc:id="80f752d8-842c-4f1d-a27c-6b5da11e29e6">
+				<ee:message>
+					<ee:set-payload><![CDATA[%dw 2.0
+output application/java
+---
+payload]]></ee:set-payload>
+				</ee:message>
+			</ee:transform>
+			<munit-tools:assert-that
+				doc:name="Assert that file content is equal to 'john,18\n'" doc:id="22afdfe8-06db-4a9c-aa24-297aab489bcc"
+				expression="#[payload]" is="#[MunitTools::equalTo('john,18\n')]" />
+		</munit:validation>
+	</munit:test>
+	<munit:test name="dataweave2-basicsFlow4Test" description="Test"
+		doc:id="9a0826ce-9b1e-43a4-8a32-552fa868e301">
+		<munit:enable-flow-sources>
+			<munit:enable-flow-source value="dataweave2-basicsFlow4" />
+		</munit:enable-flow-sources>
+		<munit:execution>
+			<set-payload
+				value='#[output application/xml --- {"user" : {"username": "john", "age": 18}}]'
+				doc:name="Prepare request" doc:id="6d53f875-c55d-429a-bbf4-2ffb3fa6b695"
+				mimeType="application/xml" />
+			<http:request method="POST" doc:name="Request to /greet5"
+				doc:id="2be72432-8624-4293-830b-265398b772c8" config-ref="HTTP_Request_configuration"
+				path="/greet5?username=john&amp;age=18" />
+		</munit:execution>
+		<munit:validation>
+			<ee:transform doc:name="Transform response"
+				doc:id="dcb717ef-5e11-4381-9586-68254b714f19">
+				<ee:message>
+					<ee:set-payload><![CDATA[%dw 2.0
+output application/java
+---
+payload]]></ee:set-payload>
+				</ee:message>
+			</ee:transform>
+			<munit-tools:assert-that
+				doc:name="Assert that response is equal to 'Hello john'" doc:id="37872f30-6bd0-4f4d-bf2b-6820cd9ea4af"
+				expression="#[payload]" is="#[MunitTools::equalTo('Hello john')]" />
+			<file:read doc:name="Read data from file" doc:id="f5c50a7c-3ca7-4eb2-90c4-c630463f7ce8"
+				config-ref="File_Config" path="${file.txt.name}" outputMimeType="text/plain"
+				outputEncoding="UTF-8" />
+			<ee:transform doc:name="Transform file content"
+				doc:id="80f752d8-842c-4f1d-a27c-6b5da11e29e6">
+				<ee:message>
+					<ee:set-payload><![CDATA[%dw 2.0
+output application/java
+---
+payload]]></ee:set-payload>
+				</ee:message>
+			</ee:transform>
+			<munit-tools:assert-that
+				doc:name="Assert that file content is equal to 'Username: john Age: 18'"
+				doc:id="22afdfe8-06db-4a9c-aa24-297aab489bcc" expression='#[payload]'
+				is="#[MunitTools::equalTo('Username: john Age: 18')]" />
+		</munit:validation>
+	</munit:test>
+	<munit:test name="dataweave2-basicsFlow5Test" description="Test"
+		doc:id="c252f200-6bc5-4dea-a090-611f93d54194">
+		<munit:enable-flow-sources>
+			<munit:enable-flow-source value="dataweave2-basicsFlow5" />
+		</munit:enable-flow-sources>
+		<munit:execution>
+			<set-payload
+				value='#[output application/json ---  {"username": "jane", "age" : 18 }]'
+				doc:name="Prepare request" doc:id="19f327e4-1220-4ebf-b56b-7a194e421fe6"
+				mimeType="application/json" />
+			<http:request method="POST" doc:name="Request to /greet6"
+				doc:id="2be72432-8624-4293-830b-265398b772c8" config-ref="HTTP_Request_configuration"
+				path="/greet6" />
+		</munit:execution>
+		<munit:validation>
+			<ee:transform doc:name="Transform response"
+				doc:id="dcb717ef-5e11-4381-9586-68254b714f19">
+				<ee:message>
+					<ee:set-payload><![CDATA[%dw 2.0
+output application/java
+---
+payload]]></ee:set-payload>
+				</ee:message>
+			</ee:transform>
+			<munit-tools:assert-that
+				doc:name="Assert that response is equal to 'Hello jane'" doc:id="37872f30-6bd0-4f4d-bf2b-6820cd9ea4af"
+				expression="#[payload]" is="#[MunitTools::equalTo('Hello jane')]" />
+			<file:read doc:name="Read data from file" doc:id="f5c50a7c-3ca7-4eb2-90c4-c630463f7ce8"
+				config-ref="File_Config" path="${file.txt.name}" outputMimeType="text/plain"
+				outputEncoding="UTF-8" />
+			<ee:transform doc:name="Transform file content"
+				doc:id="80f752d8-842c-4f1d-a27c-6b5da11e29e6">
+				<ee:message>
+					<ee:set-payload><![CDATA[%dw 2.0
+output application/java
+---
+payload]]></ee:set-payload>
+				</ee:message>
+			</ee:transform>
+			<munit-tools:assert-that
+				doc:name="Assert that file content is equal to 'Username: jane Age: 18'"
+				doc:id="22afdfe8-06db-4a9c-aa24-297aab489bcc" expression="#[payload]"
+				is="#[MunitTools::equalTo('Username: jane Age: 18')]" />
+		</munit:validation>
+	</munit:test>
+
+</mule>

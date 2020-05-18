@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:wsc="http://www.mulesoft.org/schema/mule/wsc"
+	xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:spring="http://www.springframework.org/schema/beans" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee/dw/current/dw.xsd http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/wsc http://www.mulesoft.org/schema/mule/wsc/current/mule-wsc.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="a8dcddcb-f595-4b88-9891-b845f8d3c5c7" >
+		<http:listener-connection host="0.0.0.0" port="8081" />
+	</http:listener-config>
+	<wsc:config name="Web_Service_Consumer_Config" doc:name="Web Service Consumer Config" doc:id="3464896f-2deb-4cb7-a322-dd0840332c67" >
+		<wsc:connection wsdlLocation="tshirt.wsdl" service="TshirtService" port="TshirtServicePort" address="http://tshirt-service.cloudhub.io"/>
+	</wsc:config>
+	<flow name="orderTshirt" doc:id="49c80383-4fe5-4165-80f9-fabd6c626397" >
+		<http:listener config-ref="HTTP_Listener_config" path="/orders" doc:name="Recieve HTTP request" doc:id="e25aeef0-abfe-4dd7-93d7-e4c865470b2a" allowedMethods="POST" outputMimeType="application/json"/>
+		<ee:transform doc:name="JSON to XML and set API key" doc:id="ad736b9e-ce71-4439-a93f-4a1006218b91">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/xml
+ns ns0 http://mulesoft.org/tshirt-service
+---
+ns0#OrderTshirt: payload]]></ee:set-payload>
+			</ee:message>
+			<ee:variables>
+				<ee:set-variable variableName="soap.header"><![CDATA[%dw 2.0
+output application/xml
+ns ns0 http://mulesoft.org/tshirt-service
+---
+ns0#AuthenticationHeader : {
+	apiKey: "abc12345"	
+}]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<wsc:consume config-ref="Web_Service_Consumer_Config" doc:name="Order Tshirt" doc:id="6c062bde-99fd-4e6b-9342-78c545c29728" operation="OrderTshirt"/>
+		<ee:transform doc:name="XML to JSON" doc:id="10791216-26aa-411a-ba8f-f8398306397b" >			
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="listInventory" doc:id="b270c836-9c91-453b-ab45-3f2b0fb352d4" >
+		<http:listener config-ref="HTTP_Listener_config" path="/inventory" doc:name="Recieve HTTP request" doc:id="10842178-65a9-41f4-a2cd-e6bd6f675f39" />
+		<wsc:consume config-ref="Web_Service_Consumer_Config" doc:name="List Inventory" doc:id="9da91df3-cbe9-4f08-ad95-d58b02e63841" operation="ListInventory"/>
+		<ee:transform doc:name="XML to JSON" doc:id="6443d120-2763-4e30-8d4c-6dbcc8dd57e1" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+ns ns0 http://mulesoft.org/tshirt-service
+---
+payload.body.ns0#ListInventoryResponse
+]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+</mule>

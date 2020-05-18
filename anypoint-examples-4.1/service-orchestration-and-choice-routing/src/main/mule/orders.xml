@@ -1,0 +1,340 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<mule xmlns:db="http://www.mulesoft.org/schema/mule/db"
+	xmlns:validation="http://www.mulesoft.org/schema/mule/validation"
+	xmlns:vm="http://www.mulesoft.org/schema/mule/vm"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:apikit-soap="http://www.mulesoft.org/schema/mule/apikit-soap"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/apikit-soap http://www.mulesoft.org/schema/mule/apikit-soap/current/mule-apikit-soap.xsd http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/vm http://www.mulesoft.org/schema/mule/vm/current/mule-vm.xsd
+http://www.mulesoft.org/schema/mule/validation http://www.mulesoft.org/schema/mule/validation/current/mule-validation.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd">
+	<http:listener-config name="orders-httpListenerConfig">
+		<http:listener-connection host="0.0.0.0"
+			port="8081" />
+	</http:listener-config>
+	<apikit-soap:config name="orders-soapkit-config"
+		port="IProcessOrderPort" service="IProcessOrderService" wsdlLocation="orders.wsdl" />
+	<http:request-config name="Samsung_Request_configuration"
+		doc:name="HTTP Request configuration" doc:id="6cd502d5-79b6-4eec-924a-0f3a71f7e8a6">
+		<http:request-connection host="localhost"
+			port="8082" />
+	</http:request-config>
+
+
+	<vm:config name="VM_Config" doc:name="VM Config"
+		doc:id="e5afb8e4-4a78-4b91-b89e-b953e60f8d93">
+		<vm:queues>
+			<vm:queue queueName="samsungOrder" />
+			<vm:queue queueName="inhouseOrder" />
+			<vm:queue queueName="audit" />
+		</vm:queues>
+	</vm:config>
+	<validation:config name="Validation_Config" doc:name="Validation Config"
+		doc:id="6cc1013c-d5a7-4189-9632-918baad1e363" />
+
+	<db:config name="Database_Config" doc:name="Database Config"
+		doc:id="5ea3a97b-410d-4f29-9477-e7d94bd2cc64">
+		<db:my-sql-connection host="${db.host}" port="${db.port}"
+			user="${db.user}" password="${db.password}" database="${db.name}" />
+	</db:config>
+	<configuration-properties doc:name="Configuration properties"
+		doc:id="c73717c8-43c5-4bb3-aef8-828db24051d4" file="mule-artifact.properties" />
+	<http:listener-config name="Price_Listener_config"
+		doc:name="HTTP Listener config" doc:id="5106917e-19ce-4b52-96b2-300e6e2d2ada"
+		basePath="/api">
+		<http:listener-connection host="0.0.0.0"
+			port="8083" />
+	</http:listener-config>
+	<http:request-config name="Inhouse_Request_configuration"
+		doc:name="HTTP Request configuration" doc:id="50f50dc4-ccd6-41e8-85bf-c22421cd7bee"
+		basePath="/api">
+		<http:request-connection host="localhost"
+			port="8083" />
+	</http:request-config>
+	<flow name="orders-api-main">
+		<http:listener config-ref="orders-httpListenerConfig"
+			path="/IProcessOrderService/IProcessOrderPort">
+			<http:response>
+				<http:headers><![CDATA[#[attributes.protocolHeaders default {}]]]></http:headers>
+			</http:response>
+			<http:error-response>
+				<http:body><![CDATA[#[payload]]]></http:body>
+				<http:headers><![CDATA[#[attributes.protocolHeaders default {}]]]></http:headers>
+			</http:error-response>
+		</http:listener>
+		<apikit-soap:router config-ref="orders-soapkit-config">
+			<apikit-soap:attributes><![CDATA[#[
+              %dw 2.0
+              output application/java
+              ---
+              {
+                  headers: attributes.headers,
+                  method: attributes.method,
+                  queryString: attributes.queryString
+            }]]]></apikit-soap:attributes>
+		</apikit-soap:router>
+	</flow>
+	<flow name="processOrder:\orders-soapkit-config">
+		<ee:transform doc:name="Map input and set totalValue and orderId to Vaiable"
+			doc:id="e0449458-8404-4d49-857d-223b316d822b">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/java
+---
+{
+    orderId: payload.body.processOrder.order.orderId,
+    customer: payload.body.processOrder.order.customer,
+    orderItems: payload.body.processOrder.order.*item
+}]]></ee:set-payload>
+			</ee:message>
+			<ee:variables>
+				<ee:set-variable variableName="totalValue"><![CDATA[%dw 2.0
+output application/java
+---
+0]]></ee:set-variable>
+				<ee:set-variable variableName="orderId"><![CDATA[%dw 2.0
+output application/java
+---
+payload.body.processOrder.order.orderId]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<logger level="INFO" doc:name="Log input"
+			doc:id="ee14b0f9-4cfd-4bfb-a194-155cfea423fe" message="#[output application/json --- payload]" />
+		<foreach doc:name="For each Order Item" doc:id="051d1d17-fabb-4ef4-8f24-83a079b1fb03"
+			collection="#[payload.orderItems]">
+			<choice doc:name="samsung manufacturer?" doc:id="7b6dde88-24ad-4cc7-9732-dbb1729d9a4a">
+				<when expression="#[payload.manufacturer == 'Samsung']">
+					<vm:publish-consume doc:name="Dispatch to samsungOrder"
+						doc:id="33488148-ab4d-49fc-8cfa-0741cddb8637" config-ref="VM_Config"
+						queueName="samsungOrder" timeoutUnit="MINUTES" />
+				</when>
+				<otherwise>
+					<vm:publish-consume queueName="inhouseOrder"
+						doc:name="Dispatch to inhouseOrder" doc:id="ea072a5a-6d3f-4230-9a2a-b133523e49c6"
+						config-ref="VM_Config" timeoutUnit="MINUTES" />
+				</otherwise>
+			</choice>
+			<ee:transform doc:name="Calculate totalValue"
+				doc:id="acb150f4-28b4-4d6d-af78-16c4aee06119">
+				<ee:message>
+					<ee:set-payload><![CDATA[%dw 2.0
+output application/java
+---
+payload]]></ee:set-payload>
+				</ee:message>
+				<ee:variables>
+					<ee:set-variable variableName="totalValue"><![CDATA[%dw 2.0
+output application/java
+---
+vars.totalValue + payload.totalPrice]]></ee:set-variable>
+				</ee:variables>
+			</ee:transform>
+		</foreach>
+		<ee:transform doc:name="Prepare payload"
+			doc:id="db27bc45-8814-4054-b5ec-2477f9a2e51a">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/java
+---
+{
+	order_id: vars.orderId,
+	total_value: vars.totalValue
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<vm:publish-consume queueName="audit" doc:name="Dispatch to audit"
+			doc:id="1fd8c9db-7ee3-4c7b-8073-3b51bb471c2b" config-ref="VM_Config"
+			timeoutUnit="MINUTES" timeout="10" />
+		<ee:transform doc:id="85f00aae-0a58-4c4e-9b1e-6f9095ebf02f"
+			doc:name="Response Message">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/java
+ns soap http://schemas.xmlsoap.org/soap/envelope
+---
+{
+    body: {
+        soap#Response: {
+            message: ("Order " ++ vars.orderId ++ " was processed successfully")
+        }
+    } write "application/xml"
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="samsungOrder" doc:id="bdd81355-0cc1-4799-a18c-3e5384c84687">
+		<vm:listener queueName="samsungOrder" doc:name="samsungOrder"
+			doc:id="641baf58-129b-4885-b849-3975e720f82e" config-ref="VM_Config" />
+
+		<ee:transform doc:name="Prepare request"
+			doc:id="1cbdfc38-5425-44ae-95ca-e33797a1e5f3">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/xml
+ns soapenv http://schemas.xmlsoap.org/soap/envelope/
+ns sam http://samsung.se.mulesoft.com/
+---
+{
+    soapenv#Envelope:{
+        soapenv#Header:{},
+        soapenv#Body:{
+            sam#purchase: {
+                orderRequest: {
+					name: payload.name,
+                    quantity: payload.quantity
+                }
+            }
+        }
+    }
+}]]></ee:set-payload>
+			</ee:message>
+			<ee:variables>
+				<ee:set-variable variableName="input"><![CDATA[%dw 2.0
+output application/java
+---
+payload]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<http:request method="POST" doc:name="Invoke Samsung WebService"
+			doc:id="7dc49712-6621-4777-9d3b-8e4e6c46b569" config-ref="Samsung_Request_configuration"
+			path="/SamsungServiceService/SamsungServicePort">
+		</http:request>
+		<validation:is-true doc:name="Validate status"
+			doc:id="5b96eb82-f705-427c-b4c5-d2bfdcbde3ee" config-ref="Validation_Config"
+			expression="#[attributes.statusCode == 200]" />
+		<ee:transform doc:name="Set Response"
+			doc:id="5546e430-9331-4cc8-87e4-9d395f69bd6c">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/java
+---
+{
+	id: 		payload.Envelope.Body.Response.id, 
+	status: 	payload.Envelope.Body.Response.result,
+	totalPrice: payload.Envelope.Body.Response.price as Number
+}
+
+]]></ee:set-payload>
+			</ee:message>
+			<ee:variables>
+			</ee:variables>
+		</ee:transform>
+	</flow>
+	<flow name="inhouseOrder" doc:id="3ed68035-257c-4e5c-a5ce-5db0170e8247">
+		<vm:listener queueName="inhouseOrder" doc:name="inhouseOrder"
+			doc:id="9b49e6f0-0b75-4ed7-8c15-7db959a9117e" config-ref="VM_Config" />
+		<http:request method="GET" doc:name="GET prices/{productId}"
+			doc:id="f5daf9fa-4f34-4dbf-a55e-d45abb12802a" path="/prices/{productId}"
+			config-ref="Inhouse_Request_configuration" target="inhouseData">
+			<http:uri-params><![CDATA[#[output applicaton/java
+---
+{
+	"productId" : payload.productId
+}]]]></http:uri-params>
+		</http:request>
+		<ee:transform doc:name="Prepare request"
+			doc:id="05f4b74e-ffee-4445-8dfb-db3e0e155b6e">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/java
+---
+{
+	id: uuid(),
+	product_id: payload.productId,
+	name: payload.name,
+	manufacturer: payload.manufacturer,
+	quantity: payload.quantity as Number,
+	price: vars.inhouseData.price as Number
+}]]></ee:set-payload>
+			</ee:message>
+			<ee:variables>
+			</ee:variables>
+		</ee:transform>
+		<db:insert doc:name="Save Order item to DB" doc:id="cb9810d8-1bf7-411e-acbb-2864ca6be0c5"
+			config-ref="Database_Config" target="dbResult">
+			<db:sql>INSERT INTO orders (
+				id,
+				product_id,
+				name,
+				manufacturer,
+				quantity,
+				price
+				) VALUES (
+				:id,
+				:product_id,
+				:name,
+				:manufacturer,
+				:quantity,
+				:price
+				)
+			</db:sql>
+			<db:input-parameters><![CDATA[#[payload]]]></db:input-parameters>
+		</db:insert>
+		<ee:transform doc:name="Set Response"
+			doc:id="020eec33-6516-4d07-9fd2-5425f55426d7">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/java
+---
+{
+	id: 		payload.id,
+	status: 	"ACCEPTED",
+	totalPrice: (payload.quantity * payload.price)
+}
+]]></ee:set-payload>
+			</ee:message>
+			<ee:variables>
+			</ee:variables>
+		</ee:transform>
+	</flow>
+	<flow name="priceService" doc:id="8864cacf-5a53-4c35-bf06-39d2f68d019b">
+		<http:listener doc:name="/prices/{productId}"
+			doc:id="97177d43-d23d-4c45-98f4-e9368dda9919" config-ref="Price_Listener_config"
+			path="/prices/{productId}" />
+		<ee:transform doc:name="Price Response"
+			doc:id="721c6792-46f9-457c-a39b-b079aaf6e0bf">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+	price: (randomInt(50) + 1) as Number	
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="auditService" doc:id="7bb6deac-47c6-43f0-ab29-32463417f8bc">
+		<vm:listener queueName="audit" doc:name="audit"
+			doc:id="53fa2967-38c8-4664-bc9a-da913e58efc5" config-ref="VM_Config" />
+		<ee:transform doc:name="Prepare request to DB"
+			doc:id="b46a0418-9c83-476c-94d6-5307c00904de">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/java
+---
+{
+	id: uuid(),
+	order_id: payload.order_id,
+	total_value: payload.total_value
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="Log DB request"
+			doc:id="456ff636-02cf-4827-86f5-f9256450ff73" message="#[output application/json --- payload]" />
+		<db:insert doc:name="Save Order Summary" doc:id="cc9720e7-4034-45bd-9ca6-5d1efae5dc5f"
+			config-ref="Database_Config">
+			<db:sql>INSERT INTO order_audits (
+				id,
+				order_id,
+				total_value
+				) VALUES (
+				:id,
+				:order_id,
+				:total_value
+				)
+			</db:sql>
+			<db:input-parameters><![CDATA[#[payload]]]></db:input-parameters>
+		</db:insert>
+	</flow>
+</mule>

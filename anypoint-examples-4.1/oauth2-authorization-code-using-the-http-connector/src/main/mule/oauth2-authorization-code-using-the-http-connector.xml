@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:oauth="http://www.mulesoft.org/schema/mule/oauth" xmlns:tls="http://www.mulesoft.org/schema/mule/tls"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/tls http://www.mulesoft.org/schema/mule/tls/current/mule-tls.xsd
+http://www.mulesoft.org/schema/mule/oauth http://www.mulesoft.org/schema/mule/oauth/current/mule-oauth.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="2828e348-2b4f-401c-a218-0e72b3c582b8" basePath="/" >
+		<http:listener-connection host="0.0.0.0" port="8081" protocol="HTTPS" tlsContext="TLS_Context"/>
+	</http:listener-config>
+	<tls:context name="TLS_Context" doc:name="TLS Context" doc:id="d1cc9124-2f63-4c4c-8593-b1a781ed4727" >
+		<tls:key-store path="keystore.jks" keyPassword="${keystore.keyPassword}" password="${keystore.password}" />
+	</tls:context>
+	<http:request-config name="HTTP_Request_configuration" doc:name="HTTP Request configuration" doc:id="89a41bb8-f13d-479a-9f07-c886b1a40a1b" basePath="/2.0" >
+		<http:request-connection protocol="HTTPS" host="api.box.com" port="443" tlsContext="TLS_Context" >
+			<http:authentication >
+				<oauth:authorization-code-grant-type localCallbackConfig="HTTP_Listener_config" localCallbackConfigPath="/callback" externalCallbackUrl="https://localhost:8081/callback" localAuthorizationUrl="https://localhost:8081/web" authorizationUrl="https://account.box.com/api/oauth2/authorize" clientId="${box.id}" clientSecret="${box.secret}" tokenUrl="https://api.box.com/oauth2/token" tokenManager="Token_manager_config" >
+					<oauth:custom-parameters >
+						<oauth:custom-parameter key="box_device_id" value="1" />
+						<oauth:custom-parameter key="box_device_name" value="device1" />
+					</oauth:custom-parameters>
+				</oauth:authorization-code-grant-type>
+			</http:authentication>
+		</http:request-connection>
+	</http:request-config>
+	<oauth:token-manager-config name="Token_manager_config" doc:name="Token manager config" doc:id="202ddb30-e307-4db1-b3f8-fa088a048fdc" />
+	<flow name="oauth2AuthorizationFlow" doc:id="70aef606-cbcb-4dda-a6da-db97feffcfa0" >
+		<http:listener doc:name="Listener" doc:id="ab5060e7-be22-48c7-a4f9-b156c310f8b2" config-ref="HTTP_Listener_config" path="/web/loginDone"/>
+		<http:request method="GET" doc:name="Query user resource using token" doc:id="292a2494-98a3-4d96-a49a-af197e52ac1d" config-ref="HTTP_Request_configuration" path="/search">
+			<http:query-params ><![CDATA[#[output applicaton/java
+---
+{
+	"query" : "mule"
+}]]]></http:query-params>
+		</http:request>
+		<logger level="INFO" doc:name="Log query result" doc:id="f906c6ae-7dc4-4592-8b81-bded0fa0fc46" message="#[payload]"/>
+		<set-payload value="#[payload]" doc:name="Set Payload" doc:id="0bff0a22-7d03-4751-953b-4de8e87ec183" />
+	</flow>
+</mule>

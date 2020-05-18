@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce"
+	xmlns:scripting="http://www.mulesoft.org/schema/mule/scripting"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:munit="http://www.mulesoft.org/schema/mule/munit"
+	xmlns:munit-tools="http://www.mulesoft.org/schema/mule/munit-tools" xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/scripting http://www.mulesoft.org/schema/mule/scripting/current/mule-scripting.xsd 
+		http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+		http://www.mulesoft.org/schema/mule/munit http://www.mulesoft.org/schema/mule/munit/current/mule-munit.xsd
+		http://www.mulesoft.org/schema/mule/munit-tools  http://www.mulesoft.org/schema/mule/munit-tools/current/mule-munit-tools.xsd
+http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd">
+	<munit:config name="test-suite.xml" />
+	<munit:test name="test-suite-import-leads-into-salesforceFlowTest" description="Test" doc:id="f14648e9-56a2-4f7e-bf3b-984c43328f2e" >
+		<munit:enable-flow-sources>
+	        <munit:enable-flow-source value="import-leads-into-salesforceFlow"/>	    
+    	</munit:enable-flow-sources>
+		<munit:behavior >
+			<munit-tools:spy doc:name="Spy Salesforce's create operation" doc:id="c907aed4-d9c9-4096-8c9e-98206ad5ccfc" processor="salesforce:create">
+				<munit-tools:after-call >
+					<munit-tools:assert-that doc:name="Assert that first lead has been created" doc:id="f674ec30-0d88-4b25-9f8f-f018d0b334cc" expression="#[payload[0].success]" is="#[MunitTools::equalTo(true)]"/>
+					<munit-tools:assert-that doc:name="Assert that second lead has been created" doc:id="b5989fd2-08a7-4b24-a836-0b26a2f215e0" expression="#[payload[1].success]" is="#[MunitTools::equalTo(true)]" />
+					<salesforce:delete doc:name="Clean up" doc:id="30544acc-7f20-4962-8485-270c54165a48" config-ref="Salesforce_Sfdc_config">
+						<salesforce:delete-ids ><![CDATA[#[payload map ($.id)]]]></salesforce:delete-ids>
+					</salesforce:delete>
+				</munit-tools:after-call>
+			</munit-tools:spy>
+		</munit:behavior>
+		<munit:execution >
+			<flow-ref doc:name="Flow-ref to import-leads-into-salesforceFlow" doc:id="6b9dc59b-cad7-4a7d-a005-1dec76a674ff" name="import-leads-into-salesforceFlow"/>
+			<scripting:execute engine="groovy" doc:name="Sleep for 15s until the processing is completed" doc:id="d8179941-bad3-4db5-a710-8962096fa053" >
+				<scripting:code >sleep(15000)</scripting:code>
+			</scripting:execute>
+		</munit:execution>
+		<munit:validation >
+			<munit-tools:verify-call doc:name="Verify Salesforce Query is called twice" doc:id="7ad63392-f55a-40e8-9dd4-89c2ba189fbf" processor="salesforce:query" times="2"/>
+			<munit-tools:verify-call doc:name="Verify Salesforce Create is called once" doc:id="3ad9bf70-5e83-46f7-9aea-daef497f3e6c" times="1" processor="salesforce:create"/>
+		</munit:validation>
+	</munit:test>
+
+
+</mule>

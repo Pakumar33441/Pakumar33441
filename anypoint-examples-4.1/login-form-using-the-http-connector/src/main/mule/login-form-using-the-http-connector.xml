@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<configuration-properties file="mule-artifact.properties" doc:name="Configuration properties"/>
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="6e6ff630-fd50-4fc9-a332-d56a01ebbda1" >
+		<http:listener-connection host="0.0.0.0" port="${http.port}" />
+	</http:listener-config>
+	<http:request-config name="HTTP_Request_configuration" doc:name="HTTP Request configuration" doc:id="7fe598a3-947a-4c5b-b94b-6a63ec898495" >
+		<http:request-connection host="0.0.0.0" port="${http.port}" />
+	</http:request-config>
+	<flow name="GetLoginPageFlow" doc:id="16f38dec-055f-4f3d-8a02-e3c4d1ed84fd" >
+		<http:listener config-ref="HTTP_Listener_config" path="/login" doc:name="Listener" doc:id="8c7ed76d-d8ca-4fa5-bced-83ab3a416862" allowedMethods="GET"/>
+		<parse-template location="login/index.html" doc:name="Parse Template" doc:id="a989bee5-dac9-41e5-8bcc-a50abaee5ab9" />
+	</flow>
+	<flow name="DoLoginFlow" doc:id="78d19684-f143-4e5f-9a6d-1440d6e0f562" >
+		<http:listener config-ref="HTTP_Listener_config" path="/login" doc:name="Do Login" doc:id="b45745e7-addc-4405-b8f6-9f38e319dc60" allowedMethods="POST">
+			<http:response statusCode="201" />
+		</http:listener>
+		<logger level="INFO" doc:name="Logger" doc:id="b43f27ae-8fa2-4a8d-ac6f-310e6dc06bf6" message='#["User is trying to login"]'/>
+		<choice doc:name="Choice" doc:id="6ef73a69-a598-4884-9c2d-7cfaba0aca54" >
+			<when expression="#[payload.username == 'mule' and payload.password == 'mule']" >
+				<parse-template location="login/loginSuccessful.html" doc:name="Successful login" doc:id="ffd20f28-1e7e-4511-aa4a-6ff0cb334e39" />
+			</when>
+			<otherwise >
+				<parse-template location="login/loginFailure.html" doc:name="Unsuccessful login" doc:id="c96759a0-82c4-43e2-add8-681dc2b69550" />
+			</otherwise>
+		</choice>
+	</flow>
+	<flow name="CallLoginFlowUsingRequester" doc:id="e9cbf6e0-e37e-43fb-8cc3-9b5ec5613c4e" >
+		<http:listener config-ref="HTTP_Listener_config" path="/requesterLogin" doc:name="Login using HTTP request component" doc:id="46eba043-1c0c-4765-ad81-dc3666547994" >
+		</http:listener>
+		<ee:transform doc:name="Transform Message" doc:id="0b109d68-5736-4010-8155-0f98fddc22b4" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"username" : "mule",
+	"password" : "mule"
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<http:request config-ref="HTTP_Request_configuration" method="POST" path="/login" doc:name="Do Login" doc:id="5830b5a5-842c-4b9d-b412-fdb756ec63e8" followRedirects="true" sendBodyMode="ALWAYS" requestStreamingMode="ALWAYS" outputMimeType="application/json">
+		</http:request>
+	</flow>
+</mule>

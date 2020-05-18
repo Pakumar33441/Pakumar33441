@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:munit="http://www.mulesoft.org/schema/mule/munit" xmlns:munit-tools="http://www.mulesoft.org/schema/mule/munit-tools"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xsi:schemaLocation="
+		http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+		http://www.mulesoft.org/schema/mule/munit http://www.mulesoft.org/schema/mule/munit/current/mule-munit.xsd
+		http://www.mulesoft.org/schema/mule/munit-tools  http://www.mulesoft.org/schema/mule/munit-tools/current/mule-munit-tools.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<munit:config name="test-suite.xml"/>
+	<munit:test name="test-admission-service" description="Test" doc:id="d1fb7df9-671e-4918-9703-c06fc7ac3ab8">
+		<munit:enable-flow-sources>
+			<munit:enable-flow-source value="admission-service-main" />
+			<munit:enable-flow-source value="admitSubject:\AdmissionService_SOAP_Configuration" />
+			<munit:enable-flow-source value="createEpisode:\EHRService_SOAP_Configuration" />
+			<munit:enable-flow-source value="ehr-service-main" />
+			<munit:enable-flow-source value="findEpisodes:\EHRService_SOAP_Configuration" />
+			<munit:enable-flow-source value="getPatient:\PatientService_SOAP_Configuration" />
+			<munit:enable-flow-source value="patient-service-main" />
+			<munit:enable-flow-source value="upsertPatient:\PatientService_SOAP_Configuration" />
+		</munit:enable-flow-sources>
+		<munit:execution>
+			<ee:transform doc:name="set http request body" doc:id="93498bb1-02a8-45ec-b3e3-c21c8c9bfcf4" >
+				<ee:message >
+					<ee:set-payload ><![CDATA[%dw 2.0
+ns soapenv http://schemas.xmlsoap.org/soap/envelope/
+ns ns0 http://www.mule-health.com/SOA/message/1.0
+ns ns1 http://www.mule-health.com/SOA/model/1.0
+output application/xml
+---
+soapenv#"Envelope": {
+	soapenv#"Header": {
+	},
+	soapenv#"Body": {
+		ns0#"admitSubject": {
+			ns1#"Referer": {
+				"clientId" : 1234
+			},
+			ns1#"Referral": {
+				"procedure" : {
+					"code" 	    : "In-patient",
+					"admission" : "Elective",
+					"department": "Cardiology"
+				}
+			},
+			ns1#"Subject": {
+				"nationalId" : 1234,
+				"firstName"  : "Nial",
+				"lastName"	 : "Darbey",
+				"address1" 	 : "Buenos Aires",
+				"address2"   : "",
+				"address3"   : "",
+				"nationality": "Irish",
+				"gender" 	 : "Male",
+				"dateOfBirth": "1970-08-07"
+			}
+		}
+	}
+}]]></ee:set-payload>
+					<ee:set-attributes ><![CDATA[%dw 2.0
+output application/java
+---
+{
+}]]></ee:set-attributes>
+				</ee:message>
+			</ee:transform>
+			<http:request method="POST" doc:name="call Admission service" doc:id="ca10c9dd-8b42-4390-97d2-4f71424ec6be" config-ref="HTTP_Request_configuration" path="/AdmissionService/AdmissionPort"/>
+			<ee:transform doc:name="XML to JSON" doc:id="16a7b4d5-b6fa-412b-be28-b65c063f9cd3" >
+				<ee:message >
+					<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+				</ee:message>
+			</ee:transform>
+			<logger level="INFO" doc:name="Log response" doc:id="f0882889-ed3c-465f-a7f1-4c58e1dae100" message="TEST-ADMISSION-SERVICE: #[payload]" />
+		</munit:execution>
+		<munit:validation >
+			<munit-tools:assert-that doc:name="Assert episode id is not null" doc:id="651d63eb-43d5-4ac2-8c19-10d731b84059" expression="#[payload.Envelope.Body.admitSubjectResponse.Episode.episodeId]" is="#[MunitTools::notNullValue()]" message='"Assert episode id is null"'/>
+			<munit-tools:assert-that doc:name="Assert patient id is not null" doc:id="da525273-315f-4313-a330-a7e2563b4799" is="#[MunitTools::notNullValue()]" expression="#[payload.Envelope.Body.admitSubjectResponse.Episode.PatientId]" message='"Assert patient id is null"'/>
+			<munit-tools:assert-that doc:name="Assert response status" doc:id="490501ea-75eb-4bd6-87ae-1ffecdebea96" expression="#[attributes.statusCode]" is="#[MunitTools::equalTo(200)]" message='"HTTP response status is not equal to expected"'/>
+		</munit:validation>
+	</munit:test>
+
+
+</mule>

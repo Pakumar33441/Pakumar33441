@@ -1,0 +1,22 @@
+{
+  "configs": [
+    "get-customer-list-from-netsuite.xml"
+  ],
+  "redeploymentEnabled": true,
+  "name": "get-customer-list-from-netsuite",
+  "minMuleVersion": "4.1.4",
+  "requiredProduct": "MULE_EE",
+  "classLoaderModelLoaderDescriptor": {
+    "id": "mule",
+    "attributes": {
+      "exportedResources": [
+      	"index.html",
+      	"error.html"
+      	]
+    }
+  },
+  "bundleDescriptorLoader": {
+    "id": "mule",
+    "attributes": {}
+  }
+}

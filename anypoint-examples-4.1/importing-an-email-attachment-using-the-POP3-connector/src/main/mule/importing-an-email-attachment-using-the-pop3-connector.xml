@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:file="http://www.mulesoft.org/schema/mule/file" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:tls="http://www.mulesoft.org/schema/mule/tls" xmlns:email="http://www.mulesoft.org/schema/mule/email" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/email http://www.mulesoft.org/schema/mule/email/current/mule-email.xsd
+http://www.mulesoft.org/schema/mule/tls http://www.mulesoft.org/schema/mule/tls/current/mule-tls.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd">
+	<email:pop3-config name="Email_POP3" doc:name="Email POP3" doc:id="cd51f997-32d2-4e0d-9ff4-64059d846a34" >
+		 <email:pop3s-connection host="${pop3.host}" user="${pop3.user}" password="${pop3.password}" port="${pop3.port}" tlsContext="TLS_Context">
+            <email:properties >
+                <email:property key="mail.pop3.ssl.enable" value="true" />
+            </email:properties>
+        </email:pop3s-connection>
+    </email:pop3-config>
+	<tls:context name="TLS_Context" doc:name="TLS Context" doc:id="72487e36-48ce-47b0-a8ac-7e3a5e861b98">
+		<tls:trust-store insecure="true" />
+	</tls:context>
+	<file:config name="File_Config" doc:name="File Config" doc:id="6d66f1ff-b232-4480-b246-7f72a2a3f7b4" >
+		<file:connection workingDir="${working.directory}" />
+	</file:config>
+	<configuration-properties doc:name="Configuration properties" doc:id="e95f8aa1-3a13-46b4-8b56-63e57fe51da5" file="mule-artifact.properties" />
+	<flow name="importing-an-email-attachment-using-the-pop3-connectorFlow" doc:id="d3468272-d089-4261-9a88-1da979433fe8" >
+		<scheduler doc:name="Scheduler" doc:id="3dde0f0c-0e00-466b-8095-d489737871e2" >
+			<scheduling-strategy >
+				<fixed-frequency frequency="5000"/>
+			</scheduling-strategy>
+		</scheduler>
+		<email:list-pop3 doc:name="List - POP3" doc:id="d3d34a27-3150-461f-94c8-d808aec6e688" config-ref="Email_POP3"/>
+		<foreach doc:name="For Each" doc:id="7be75c5d-6cc6-41c1-b8b7-26d12afd16c3" >
+			<set-payload value="#[payload.attachments['input.csv']]" doc:name="Set Payload" doc:id="a2cc57a1-4f18-47c0-9e33-4fd90cb0d8ad" mimeType="application/csv"/>
+			<ee:transform doc:name="Map CSV to XML" doc:id="30f529ce-a730-40b9-83c4-aedcd2a2973b">
+				<ee:message>
+					<ee:set-payload><![CDATA[%dw 2.0
+output application/xml
+---
+orders: {
+	(payload map 
+	order: {
+		orderId : $.orderId,
+		name : $.name,
+		units : $.units,
+		pricePerUnit : $.pricePerUnit
+	})
+}
+]]></ee:set-payload>
+				</ee:message>
+			</ee:transform>
+			<logger level="INFO" doc:name="Log the converted XML payload" doc:id="5f2a6bc2-5c9a-4818-9088-5660caa6339f" message="#[output application/xml --- payload]"/>
+			<file:write doc:name="Create file with Order" doc:id="b00f7b3e-fad9-4137-a90c-65c850a67bfd" config-ref="File_Config" path='#["output/order-" ++ uuid()[0 to 7] ++ ".xml"]' mode="CREATE_NEW" />
+		</foreach>
+	</flow>
+</mule>

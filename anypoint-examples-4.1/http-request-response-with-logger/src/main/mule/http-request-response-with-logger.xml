@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="b8d35da6-af22-4ac4-96a0-e35516228e0f" >
+		<http:listener-connection host="0.0.0.0" port="${http.port}" />
+	</http:listener-config>
+	<flow name="http-request-response-with-loggerFlow" doc:id="79bbea12-3694-479d-a9b4-0c16a9cadd53" >
+		<http:listener config-ref="HTTP_Listener_config" path="/*" doc:name="Receive http request" doc:id="ddac7abe-c1c6-4f3b-9744-2fdd6e029992" />
+		<set-payload value="#[output text/plain --- write(attributes.requestPath, 'application/java')]" doc:name="Set Payload" doc:id="de9ca2c1-d7d8-4f9d-9f76-fc8bd801fc41" mimeType="text/plain"/>
+		<logger level="INFO" doc:name="Logger" doc:id="26ef62f5-c088-4da1-998c-c295fcd3e88d" message='#["About to echo $(payload) "]'/>
+	</flow>
+</mule>

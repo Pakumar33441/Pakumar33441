@@ -1,0 +1,25 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<types:mule xmlns:types="http://www.mulesoft.org/schema/mule/types">
+  <types:catalog>
+    <types:type name="orderJson" format="json">
+      <types:example format="json" location="sample_data/json.json"></types:example>
+    </types:type>
+    <types:type name="orderTshirtResponseXML" format="java">
+      <types:shape format="raml"><![CDATA[#%RAML 1.0 DataType
+type: string]]></types:shape>
+    </types:type>
+    <types:type name="listInventoryResponseXML" format="java">
+      <types:shape format="raml"><![CDATA[#%RAML 1.0 DataType
+type: string]]></types:shape>
+    </types:type>
+  </types:catalog>
+  <types:enrichment select="#ad736b9e-ce71-4439-a93f-4a1006218b91">
+    <types:processor-declaration>
+      <types:input-event>
+        <types:message>
+          <types:payload type="orderJson"/>
+        </types:message>
+      </types:input-event>
+    </types:processor-declaration>
+  </types:enrichment>
+</types:mule>

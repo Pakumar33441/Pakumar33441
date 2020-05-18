@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:munit="http://www.mulesoft.org/schema/mule/munit" xmlns:munit-tools="http://www.mulesoft.org/schema/mule/munit-tools"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xsi:schemaLocation="
+		http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+		http://www.mulesoft.org/schema/mule/munit http://www.mulesoft.org/schema/mule/munit/current/mule-munit.xsd
+		http://www.mulesoft.org/schema/mule/munit-tools  http://www.mulesoft.org/schema/mule/munit-tools/current/mule-munit-tools.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd">
+	<munit:config name="new-test-suite.xml"/>
+	<munit:test name="new-test-suite-getPatient:\PatientService_SOAP_ConfigurationTest" description="Test" doc:id="ab5905f4-e8e9-42a6-a0d1-5d3e9f1e4a9e">
+		<munit:execution>
+			<flow-ref doc:name="call Patient service getPatient" doc:id="70f6a14c-c405-49fe-a8e0-32e580ebd5d0" name="getPatient:\PatientService_SOAP_Configuration"/>
+			<ee:transform doc:name="Transform Response body to JSON" doc:id="e1b00eea-34db-4932-bd37-4ca64f509cf7">
+				<ee:message>
+					<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+				</ee:message>
+			</ee:transform>
+			<logger level="INFO" doc:name="Log response" doc:id="352e4521-2f9b-4f66-a407-dfd8d5e25bce" message="TEST-GET-PATIENT: #[output application/json --- payload]" />
+		</munit:execution>
+		<munit:validation >
+			<munit-tools:assert-that doc:name="Assert patient id is not null" doc:id="ebbad612-17eb-4299-a664-73693c7f4a58" message='"PatientId is null"' expression="#[payload.getPatientResponse.Patient.patientId]" is="#[MunitTools::notNullValue()]"/>
+		</munit:validation>
+	</munit:test>
+	<munit:test name="test-patient-serviceTest" description="MUnit Test" doc:id="3815c6cb-fccd-478a-be72-98f5b4369b2a" >
+		<munit:execution >
+			<flow-ref doc:name="call Patient service upsertPatient" doc:id="125a057c-7e2f-4102-8375-43c7b6f13a63" name="upsertPatient:\PatientService_SOAP_Configuration"/>
+			<ee:transform doc:name="Transform Response body to JSON" doc:id="82f8d464-0ac7-4447-88fa-c2ce2633557b" >
+				<ee:message >
+					<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+				</ee:message>
+			</ee:transform>
+			<logger level="INFO" doc:name="Log response" doc:id="2694309c-b98a-46d1-b259-ad9171a65c6b" message="TEST-UPSERT-PATIENT:#[output application/json --- payload]"/>
+		</munit:execution>
+		<munit:validation >
+			<munit-tools:assert-that doc:name="Assert patient id is not null" doc:id="9c072547-e6c1-4d44-8b21-0cf56bf9e66f" expression="#[payload.upsertPatientResponse.PatientId]" is="#[MunitTools::notNullValue()]" message='"PatientId is null"'/>
+		</munit:validation>
+	</munit:test>
+
+
+</mule>

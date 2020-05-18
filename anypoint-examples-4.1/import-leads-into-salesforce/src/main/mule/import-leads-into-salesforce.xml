@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:os="http://www.mulesoft.org/schema/mule/os" xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce"
+	xmlns:httpn="http://www.mulesoft.org/schema/mule/httpn"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:file="http://www.mulesoft.org/schema/mule/file" xmlns:batch="http://www.mulesoft.org/schema/mule/batch" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:spring="http://www.springframework.org/schema/beans" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/batch http://www.mulesoft.org/schema/mule/batch/current/mule-batch.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/salesforcen http://www.mulesoft.org/schema/mule/salesforcen/current/mule-salesforcen.xsd
+http://www.mulesoft.org/schema/mule/httpn http://www.mulesoft.org/schema/mule/httpn/current/mule-httpn.xsd
+http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd
+http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd">
+	<file:config name="File_Config" doc:name="File Config" doc:id="4a9e0d8e-1fc9-4b2b-b48b-542b1f34ad72" >
+		<file:connection workingDir="src/main/resources/input" />
+	</file:config>
+	<salesforce:sfdc-config name="Salesforce_Sfdc_config" doc:name="Salesforce Sfdc config" doc:id="7c8e9d22-582f-49a9-86b4-73d206301356" >
+		<salesforce:basic-connection username="${sfdc.user}" password="${sfdc.password}" securityToken="${sfdc.securityToken}" >
+			<pooling-profile />
+		</salesforce:basic-connection>
+	</salesforce:sfdc-config>
+	<configuration-properties doc:name="Configuration properties" doc:id="65b5711c-4116-41f1-92a9-43c6c0f026bb" file="mule-artifact.properties" />
+	<flow name="import-leads-into-salesforceFlow" >
+		<scheduler doc:name="Schedule every 10 seconds" doc:id="ff8ab6d9-35be-48cf-8d4d-3c0b98e71bda">
+			<scheduling-strategy>
+				<fixed-frequency frequency="${scheduler.frequency}" startDelay="${scheduler.startDelay}"/>
+			</scheduling-strategy>
+		</scheduler>
+		<file:read config-ref="File_Config" path="leads.csv" doc:name="Read the CSV file" doc:id="4125fe03-8277-4562-8de3-497b05669913" outputMimeType="text/csv"/>
+		<ee:transform doc:name="Transform CSV to Maps" doc:id="204994ed-412f-43e4-a364-bd29e27e653e">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/java
+---
+payload map {
+	Company    : $.company,
+	Email      : $.email,
+	FirstName  : $.firstName,
+	LastName   : $.lastName
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<batch:job jobName="CreateLeadsBatch" doc:id="1344bba3-d88e-452a-9adc-44354fcbcaf1" maxFailedRecords="1000">
+			<batch:process-records >
+				<batch:step name="LeadExistsStep" doc:id="2fb82988-5aec-4036-8211-097456a2c2c8" >
+					<salesforce:query config-ref="Salesforce_Sfdc_config" doc:name="Find lead" doc:id="1b09ee90-feac-4f77-9b89-e2a6c6ec0f41" target="leadNotFound" targetValue="#[isEmpty(payload)]">
+						<salesforce:salesforce-query >SELECT Id FROM Lead WHERE Email = ':email'</salesforce:salesforce-query>
+						<salesforce:parameters ><![CDATA[#[output application/java
+---
+{
+	"email" : payload.Email
+}]]]></salesforce:parameters>
+					
+</salesforce:query>
+				
+</batch:step>
+				<batch:step name="LeadInsertStep" doc:id="19ab7302-35e5-4742-b52f-b72fdd9d29ca" acceptExpression="vars.leadNotFound">
+					<logger level="INFO" doc:name="Log the lead" doc:id="fe2c4366-b60c-41a7-9dd9-1a35176b0fbd" message="#['Processing new record: ' ++ write(payload, 'application/json', {'indent': 'false'})]"/>
+					<batch:aggregator doc:name="Batch Aggregator" doc:id="6ebe0d59-7f6e-4687-aaf9-8246900d95c7" size="200">
+						<logger level="INFO" doc:name="Logger" doc:id="e60be32c-d6e8-47eb-8047-f7830b46cd6c" message="#[payload]"/>
+						<salesforce:create config-ref="Salesforce_Sfdc_config" type="Lead" doc:name="Insert Lead" doc:id="29518761-43b4-4117-a801-d8bf210d8fed" />
+					</batch:aggregator>
+				</batch:step>
+				<batch:step name="LogFailuresStep" doc:id="981897b2-c00f-461e-8711-207b2d9c79f3" acceptPolicy="ONLY_FAILURES">
+					<logger level="ERROR" doc:name="Log Failure" doc:id="3aff2b4e-0c36-44e5-aa11-e5826afbd522" message="#['Failure: ' ++  write(payload, 'application/json', {'indent': 'false'})]"/>
+				</batch:step>
+			</batch:process-records>
+			<batch:on-complete >
+				<logger level="INFO" doc:name="Log Results" doc:id="8d354c77-f1a7-4046-a67b-20b320aa238c" message="#[payload.loadedRecords ++ ' Loaded Records ' ++ payload.failedRecords ++' Failed Records']"/>
+			</batch:on-complete>
+		</batch:job>
+	</flow>
+</mule>

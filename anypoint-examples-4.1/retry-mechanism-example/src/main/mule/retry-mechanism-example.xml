@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:scripting="http://www.mulesoft.org/schema/mule/scripting"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/scripting http://www.mulesoft.org/schema/mule/scripting/current/mule-scripting.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<configuration-properties file="mule-artifact.properties" doc:name="Configuration properties"/>
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="f91d67cd-026c-4aa8-af8e-73b8b0b8eb44" >
+		<http:listener-connection host="0.0.0.0" port="${http.port}" />
+	</http:listener-config>
+	<flow name="retry-mechanism-exampleFlow" doc:id="878612f1-38ee-4f55-9f68-aca9487331d2" >
+		<http:listener doc:name="Listener" doc:id="f584fce5-7e4d-4383-91b8-770be9131861" config-ref="HTTP_Listener_config" path="/trigger"/>
+		<until-successful maxRetries="5" doc:name="Until Successful" doc:id="8bf57310-4d1a-4de8-b5fe-25533551de99" millisBetweenRetries="1000">
+			<logger level="INFO" doc:name="Log processing triggered" doc:id="3e795829-962d-44af-a414-c90b0de4089b" message="#['Attempt to trigger processing']"/>
+			<choice doc:name="Should the flow fail?" doc:id="41b1f54e-28e0-43b0-bb21-8b62e22fd558" >
+				<when expression="attributes.queryParams.fail" >
+					<scripting:execute engine="groovy" doc:name="Execute the failing script" doc:id="229b4136-ef94-43e0-854a-8f38074cc7b2">
+				<scripting:code>throw new Exception(&quot;This is the reason why the processing has failed.&quot;);
+</scripting:code>
+			</scripting:execute>
+				</when>
+				<otherwise>
+					<logger level="INFO" doc:name="Log successful" doc:id="44fdd183-4a32-4c84-938e-9172c4574ff8" message="Processing successfully completed." />
+					<set-payload value="Processing successfully completed." doc:name="Set Response" doc:id="a44b1811-7e9c-4a2d-adae-caf5479cb451" mimeType="text/plain"/>
+				</otherwise>
+			</choice>
+		</until-successful>
+	</flow>
+</mule>

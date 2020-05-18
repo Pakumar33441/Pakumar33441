@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:file="http://www.mulesoft.org/schema/mule/file"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd">
+	<file:config name="File_Config" doc:name="File Config" doc:id="2aa1d13c-af9e-4482-b05f-0bea3f018181" >
+		<file:connection workingDir="src/main/resources" />
+	</file:config>
+	<salesforce:sfdc-config name="Salesforce" doc:name="Salesforce Sfdc config" doc:id="61d167ee-4d69-40b5-afb8-b8c739030ce7" >
+		<salesforce:basic-connection username="${sfdc.user}" password="${sfdc.password}" securityToken="${sfdc.securityToken}" />
+	</salesforce:sfdc-config>
+	<configuration-properties file="mule-artifact.properties" doc:name="Configuration properties" doc:id="fdbda6f9-dbd7-4606-a2c1-9c55d66ae0b3" />
+	<flow name="import-contacts-into-salesforceFlow" doc:id="dc5828b0-a06f-4b9f-aa06-9ea32de050df" >
+		<scheduler doc:name="Schedule every 10 seconds" doc:id="549757e6-5903-44aa-a8e4-7a0ffd437b90" >
+			<scheduling-strategy >
+				<fixed-frequency frequency="10000"/>
+			</scheduling-strategy>
+		</scheduler>
+		<file:read config-ref="File_Config" path="contacts.csv" doc:name="Read contacts.csv" doc:id="5c95b634-404b-4837-a0a1-6e5cbc2078aa" />
+		<ee:transform doc:name="Map CSV to Contacts" doc:id="caaba953-a30e-4510-954f-f3ae35ebc623" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+payload map {
+
+	FirstName: $.firstname,
+	LastName : $.surname,
+	Email : $.email,
+	Phone : $.phone    
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<salesforce:create config-ref="Salesforce" type="Contact" doc:name="Create Salesforce Contact" doc:id="249222d8-beab-40e1-a348-ff111dfa20e4" />
+	</flow>
+</mule>

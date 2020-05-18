@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:file="http://www.mulesoft.org/schema/mule/file"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:spring="http://www.springframework.org/schema/beans" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<configuration-properties doc:name="Configuration properties" file="mule-artifact.properties" />
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="c468d936-1dbf-4e4d-af72-4555a2cf19d0" >
+		<http:listener-connection host="0.0.0.0" port="${http.port}" />
+	</http:listener-config>
+	<file:config name="File_Config" doc:name="File Config" doc:id="4ad78715-a858-40ba-a018-5c7aea9cef16" >
+		<file:connection workingDir="src/main/resources" />
+	</file:config>
+	<flow name="scatter-gather-flow-controlFlow" doc:id="bb9f9e82-e197-476d-a409-74d52d713a74" >
+		<http:listener config-ref="HTTP_Listener_config" path="/scatterGather" doc:name="Listener" doc:id="39ada237-f860-4c6c-873f-f1f17f2d0b69" />
+		<scatter-gather doc:name="Scatter-Gather" doc:id="efd3673e-3107-4559-adfd-818199d03ae1" >
+			<route >
+				<file:read config-ref="File_Config" path="contacts-1.csv" doc:name="Read contacts-1.csv file" doc:id="102b51ac-1b4a-4901-933e-418dee1f557f" outputMimeType="text/csv" target="contacts1"/>
+			</route>
+			<route >
+				<file:read config-ref="File_Config" path="contacts-2.csv" doc:name="Read contacts-2.csv file" doc:id="57dddaa4-c076-41eb-96ed-c70566228255" outputMimeType="text/csv" target="contacts2"/>
+			</route>
+		</scatter-gather>
+		<ee:transform doc:name="Aggregate data to JSON" doc:id="0274062e-4206-44a7-8f71-d8d58d81af6b" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+aggregated: vars.contacts1 ++ vars.contacts2]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+</mule>

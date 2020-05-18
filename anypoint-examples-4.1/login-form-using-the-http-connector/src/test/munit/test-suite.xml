@@ -1,0 +1,159 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:munit="http://www.mulesoft.org/schema/mule/munit"
+	xmlns:munit-tools="http://www.mulesoft.org/schema/mule/munit-tools"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xsi:schemaLocation="
+		http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+		http://www.mulesoft.org/schema/mule/munit http://www.mulesoft.org/schema/mule/munit/current/mule-munit.xsd
+		http://www.mulesoft.org/schema/mule/munit-tools  http://www.mulesoft.org/schema/mule/munit-tools/current/mule-munit-tools.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<munit:config name="test-suite.xml" />
+	<http:request-config name="HTTP_Request_test_configuration"
+		doc:name="HTTP Request configuration" doc:id="0290942b-09fd-455e-ba21-672696ed5bb8"
+		basePath="/">
+		<http:request-connection host="0.0.0.0" port="${http.port}" />
+	</http:request-config>
+	<munit:test name="GetLoginPageFlowTest" description="Test"
+		doc:id="883aac5b-8a25-44ac-a6e9-db18ffb43d94">
+		<munit:enable-flow-sources>
+			<munit:enable-flow-source value="GetLoginPageFlow" />
+		</munit:enable-flow-sources>
+		<munit:execution>
+			<http:request method="GET" doc:name="Request to /login"
+				doc:id="2c290e56-0f07-4916-8cd1-17eb864a8adf" config-ref="HTTP_Request_test_configuration"
+				path="/login" outputMimeType="application/xml" />
+		</munit:execution>
+		<munit:validation>
+			<ee:transform doc:name="Transform html"
+				doc:id="2f0e5a51-cc13-4414-8236-442143d4c909">
+				<ee:message>
+					<ee:set-payload><![CDATA[%dw 2.0
+output application/java
+---
+sizeOf(payload.html.body.form)]]></ee:set-payload>
+				</ee:message>
+			</ee:transform>
+			<munit-tools:assert-that doc:name="Assert that html contains inputs"
+				doc:id="f59edba1-61a1-4158-b9fa-9eadb7ab1e3e" expression="#[payload]"
+				is="#[MunitTools::equalTo(4)]" />
+			<munit-tools:assert-that doc:name="Assert response status"
+				doc:id="e399bb68-26ef-428c-9b68-89ca73bf76b1" expression="#[attributes.statusCode]"
+				is="#[MunitTools::equalTo(200)]" />
+		</munit:validation>
+	</munit:test>
+	<munit:test name="DoLoginFlowTest" description="Test"
+		doc:id="283b061b-101e-4495-bfd7-1ca8d3184ea8">
+		<munit:enable-flow-sources>
+			<munit:enable-flow-source value="DoLoginFlow" />
+		</munit:enable-flow-sources>
+		<munit:execution>
+			<ee:transform doc:name="Prepare login request"
+				doc:id="678634af-2b4a-49c5-9f46-cade831975e0">
+				<ee:message>
+					<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"username" : "mule",
+	"password" : "mule"
+}]]></ee:set-payload>
+				</ee:message>
+			</ee:transform>
+			<http:request method="POST" doc:name="Request to /login"
+				doc:id="2c290e56-0f07-4916-8cd1-17eb864a8adf" config-ref="HTTP_Request_test_configuration"
+				path="/login" outputMimeType="application/xml" />
+		</munit:execution>
+		<munit:validation>
+			<ee:transform doc:name="Transform html"
+				doc:id="820780bb-ff5c-4e77-861c-beb8e67d27e3">
+				<ee:message>
+					<ee:set-payload><![CDATA[%dw 2.0
+output application/java
+---
+payload.html.body]]></ee:set-payload>
+				</ee:message>
+			</ee:transform>
+			<munit-tools:assert-that
+				doc:name="Assert that html contains 'User has been logged successfully!'"
+				doc:id="cc033070-7d74-481d-827f-c0dd8d29bb5b" expression="#[payload contains 'User has been logged successfully!']"
+				is="#[MunitTools::equalTo(true)]" />
+			<munit-tools:assert-that doc:name="Assert response status"
+				doc:id="e399bb68-26ef-428c-9b68-89ca73bf76b1" expression="#[attributes.statusCode]"
+				is="#[MunitTools::equalTo(201)]" />
+		</munit:validation>
+	</munit:test>
+	<munit:test name="DoLoginFlowTestWithInvalidCredentials"
+		description="Test" doc:id="283b061b-101e-4495-bfd7-1ca8d3184ea8">
+		<munit:enable-flow-sources>
+			<munit:enable-flow-source value="DoLoginFlow" />
+		</munit:enable-flow-sources>
+		<munit:execution>
+			<ee:transform doc:name="Prepare login request"
+				doc:id="678634af-2b4a-49c5-9f46-cade831975e0">
+				<ee:message>
+					<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"username" : "elum",
+	"password" : "elum"
+}]]></ee:set-payload>
+				</ee:message>
+			</ee:transform>
+			<http:request method="POST" doc:name="Request to /login"
+				doc:id="2c290e56-0f07-4916-8cd1-17eb864a8adf" config-ref="HTTP_Request_test_configuration"
+				path="/login" outputMimeType="application/xml" />
+		</munit:execution>
+		<munit:validation>
+			<ee:transform doc:name="Transform html"
+				doc:id="820780bb-ff5c-4e77-861c-beb8e67d27e3">
+				<ee:message>
+					<ee:set-payload><![CDATA[%dw 2.0
+output application/java
+---
+payload.html.body]]></ee:set-payload>
+				</ee:message>
+			</ee:transform>
+			<munit-tools:assert-that
+				doc:name="Assert that html contains 'Wrong username or password! Try again.'"
+				doc:id="cc033070-7d74-481d-827f-c0dd8d29bb5b"
+				expression="#[payload[&quot;__text&quot;] contains 'Wrong username or password! Try again.']"
+				is="#[MunitTools::equalTo(true)]" />
+		</munit:validation>
+	</munit:test>
+	<munit:test name="CallLoginFlowUsingRequesterTest"
+		description="Test" doc:id="75c31827-142c-4450-b92b-42b125c98a96">
+		<munit:enable-flow-sources>
+			<munit:enable-flow-source value="CallLoginFlowUsingRequester" />
+			<munit:enable-flow-source value="DoLoginFlow" />
+		</munit:enable-flow-sources>
+		<munit:execution>
+			<http:request method="GET" doc:name="Request to /requesterLogin"
+				doc:id="2c290e56-0f07-4916-8cd1-17eb864a8adf" config-ref="HTTP_Request_test_configuration"
+				path="/requesterLogin" outputMimeType="application/xml" />
+		</munit:execution>
+		<munit:validation>
+			<ee:transform doc:name="Transform html"
+				doc:id="820780bb-ff5c-4e77-861c-beb8e67d27e3">
+				<ee:message>
+					<ee:set-payload><![CDATA[%dw 2.0
+output application/java
+---
+payload.html.body]]></ee:set-payload>
+				</ee:message>
+			</ee:transform>
+			<munit-tools:assert-that
+				doc:name="Assert that html contains 'User has been logged successfully!'"
+				doc:id="707a4fa0-280a-45f2-a13a-f8f78ca661c1" expression="#[payload contains 'User has been logged successfully!']"
+				is="#[MunitTools::equalTo(true)]" />
+			<munit-tools:assert-that doc:name="Assert response status"
+				doc:id="e399bb68-26ef-428c-9b68-89ca73bf76b1" expression="#[attributes.statusCode]"
+				is="#[MunitTools::equalTo(200)]" />
+		</munit:validation>
+	</munit:test>
+
+</mule>

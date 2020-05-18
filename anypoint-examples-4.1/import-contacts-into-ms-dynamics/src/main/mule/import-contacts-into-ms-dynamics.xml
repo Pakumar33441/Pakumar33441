@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:file="http://www.mulesoft.org/schema/mule/file" xmlns:microsoft-dynamics-crm="http://www.mulesoft.org/schema/mule/microsoft-dynamics-crm"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd 
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/microsoft-dynamics-crm http://www.mulesoft.org/schema/mule/microsoft-dynamics-crm/current/mule-microsoft-dynamics-crm.xsd">
+	
+	<microsoft-dynamics-crm:dynamics-crm-config name="Microsoft_Dynamics_CRM_Dynamics_CRM" doc:name="Microsoft Dynamics CRM Dynamics CRM" doc:id="bd9ec53c-d8d7-4bbd-89a5-43f565bddf7d" >
+		<microsoft-dynamics-crm:online-connection username="${username}" password="${password}" organizationServiceUrl="${organizationServiceUrl}" authenticationRetries="${authenticationRetries}" />
+	</microsoft-dynamics-crm:dynamics-crm-config>
+	<configuration-properties doc:name="Configuration properties" doc:id="d93400c6-93f0-45a8-8103-8ff95769c431" file="mule-artifact.properties" />
+	<file:config name="File_Config" doc:name="File Config" doc:id="4a9e0d8e-1fc9-4b2b-b48b-542b1f34ad72" >
+		<file:connection workingDir="${working.directory}" />
+	</file:config>
+	<flow name="import-contacts-into-ms-dynamicsFlow" doc:id="02bcab8e-332b-4e00-8eb7-221bcd56e0ff" >
+				<scheduler doc:name="Scheduler" doc:id="71506b2b-bc25-4b50-b2c8-5481d58c5143" >
+			<scheduling-strategy>
+				<fixed-frequency frequency="${scheduler.frequency}" startDelay="${scheduler.startDelay}"/>
+			</scheduling-strategy>
+		</scheduler>
+		<file:read doc:name="Read CSV File" doc:id="45ca97be-caf7-453f-b0b7-aa430f57199c" path="contacts.csv" config-ref="File_Config"/>
+		<ee:transform doc:name="CSV To Map" doc:id="32087185-b0de-4760-a7b2-4abca481fa90" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+payload map {
+	firstname: $.firstname,
+	lastname: $.surname,
+	emailaddress1: $.email,
+	telephone1: $.phone
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<foreach doc:name="For Each" doc:id="65793d4c-00e5-41ec-906b-8979cc6465e2" collection="#[payload]">
+			<microsoft-dynamics-crm:create doc:name="Create Contact" doc:id="8604f3f4-823b-4b6c-bfb5-ad41150c67e4" logicalName="contact" config-ref="Microsoft_Dynamics_CRM_Dynamics_CRM"/>
+		
+
+</foreach>
+	
+</flow>
+</mule>

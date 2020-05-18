@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<mule xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:apikit-soap="http://www.mulesoft.org/schema/mule/apikit-soap"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd 
+	http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd 
+	http://www.mulesoft.org/schema/mule/apikit-soap http://www.mulesoft.org/schema/mule/apikit-soap/current/mule-apikit-soap.xsd 
+	http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<http:listener-config name="samsung-httpListenerConfig">
+		<http:listener-connection host="0.0.0.0"
+			port="8082" />
+	</http:listener-config>
+	<apikit-soap:config name="samsung-soapkit-config"
+		port="SamsungServicePort" service="SamsungServiceService"
+		wsdlLocation="samsung.wsdl" />
+	<flow name="samsung-api-main">
+		<http:listener config-ref="samsung-httpListenerConfig"
+			path="/SamsungServiceService/SamsungServicePort">
+			<http:response>
+				<http:body>#[payload]</http:body>
+				<http:headers>#[attributes.protocolHeaders default {}]
+				</http:headers>
+			</http:response>
+			<http:error-response>
+				<http:body>#[payload]</http:body>
+				<http:headers>#[attributes.protocolHeaders default {}]
+				</http:headers>
+			</http:error-response>
+		</http:listener>
+		<apikit-soap:router config-ref="samsung-soapkit-config">
+			<apikit-soap:message>#[payload]</apikit-soap:message>
+			<apikit-soap:attributes>#[
+				%dw 2.0
+				output application/java
+				---
+				{
+				headers:
+				attributes.headers,
+				method: attributes.method,
+				queryString:
+				attributes.queryString
+				}]
+			</apikit-soap:attributes>
+		</apikit-soap:router>
+	</flow>
+	<flow name="purchase:\samsung-soapkit-config">
+		<ee:transform doc:id="43ec9db2-3c7e-48a6-888d-5f207761c5dc"
+			doc:name="Response Message">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/java
+ns soap http://schemas.xmlsoap.org/soap/envelope/
+---
+body: {
+        soap#Response: {
+            id: uuid(),
+            result: "ACCEPTED",
+            price: payload.body.purchase.orderRequest.quantity * (randomInt(50)+1)
+        }
+    } write "application/xml" ]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+</mule>
